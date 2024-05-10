@@ -24,12 +24,6 @@ pub enum TokenKind {
     Token3,
 }
 
-impl TokenKind {
-    pub fn is_trivia(&self) -> bool {
-        unreachable!("Expanded by the template")
-    }
-}
-
 #[derive(
     Debug,
     Eq,
@@ -53,6 +47,12 @@ pub enum RuleKind {
     Rule3,
 }
 
+impl RuleKind {
+    pub fn is_trivia(&self) -> bool {
+        unreachable!("Expanded by the template")
+    }
+}
+
 #[derive(
     Debug,
     Eq,
@@ -67,21 +67,19 @@ pub enum RuleKind {
 )]
 #[cfg_attr(feature = "slang_napi_interfaces", /* derives `Clone` and `Copy` */ napi(string_enum, namespace = "kinds"))]
 #[cfg_attr(not(feature = "slang_napi_interfaces"), derive(Clone, Copy))]
-pub enum NodeLabel {
-    // Built-in labels
-    // _SLANG_INTERNAL_RESERVED_NODE_LABELS_ (keep in sync)
+pub enum FieldName {
+    // Built-in fields
+    // _SLANG_INTERNAL_RESERVED_NODE_FIELD_NAMES_ (keep in sync)
     Item,
     Variant,
     Separator,
     Operand,
     LeftOperand,
     RightOperand,
-    LeadingTrivia,
-    TrailingTrivia,
     // Used for testing this crate, this is generated in the client code
-    Label1,
-    Label2,
-    Label3,
+    Name1,
+    Name2,
+    Name3,
 }
 
 /// The lexical context of the scanner.

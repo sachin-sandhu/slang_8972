@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::rc::Rc;
 
 use anyhow::Result;
 use infra_utils::paths::PathExtensions;
@@ -8,7 +7,7 @@ use infra_utils::paths::PathExtensions;
 fn using_the_cursor() -> Result<()> {
     // --8<-- [start:imports]
     use semver::Version;
-    use slang_solidity::kinds::{NodeLabel, RuleKind, TokenKind};
+    use slang_solidity::kinds::{FieldName, RuleKind, TokenKind};
     use slang_solidity::language::Language;
     use slang_solidity::text_index::TextRangeExtensions;
     // --8<-- [end:imports]
@@ -72,7 +71,7 @@ fn using_the_cursor() -> Result<()> {
 
         while cursor.go_to_next_rule_with_kind(RuleKind::ContractDefinition) {
             let range = cursor.text_range().utf8();
-            let text = Rc::clone(cursor.node().as_rule().unwrap()).unparse();
+            let text = cursor.node().as_rule().unwrap().clone().unparse();
 
             contracts.push((range, text.trim().to_owned()));
         }
@@ -102,18 +101,18 @@ fn using_the_cursor() -> Result<()> {
     }
 
     {
-        // --8<-- [start:using-labeled-cursors]
+        // --8<-- [start:using-named-cursors]
         let cursor = parse_output.create_tree_cursor();
 
         let identifiers: Vec<_> = cursor
-            .with_labels()
-            .filter(|node| node.label == Some(NodeLabel::Name))
+            .with_names()
+            .filter(|node| node.name == Some(FieldName::Name))
             .filter_map(|node| node.as_token_with_kind(TokenKind::Identifier).cloned())
             .map(|identifier| identifier.text.clone())
             .collect();
 
         assert_eq!(identifiers, &["Foo", "Bar", "Baz"]);
-        // --8<-- [end:using-labeled-cursors]
+        // --8<-- [end:using-named-cursors]
     }
 
     Ok(())

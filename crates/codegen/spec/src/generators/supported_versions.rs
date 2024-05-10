@@ -17,9 +17,8 @@ pub fn generate_supported_versions(model: &SpecModel) -> Result<String> {
 
     writeln!(
         buffer,
-        "This specification compiles information from {versions_count} publicly released versions of {language_name}:", 
-        versions_count = versions.len(),
-        language_name = model.language.name,
+        "This specification compiles information from {count} publicly released versions of Solidity:", 
+        count = versions.len(),
     )?;
 
     writeln!(buffer)?;

@@ -8,11 +8,9 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 cargo-emit = { workspace = true }
-console = { workspace = true }
 ignore = { workspace = true }
 Inflector = { workspace = true }
 itertools = { workspace = true }
-num-format = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 semver = { workspace = true }
@@ -21,7 +19,3 @@ serde_json = { workspace = true }
 similar-asserts = { workspace = true }
 tera = { workspace = true }
 toml = { workspace = true }
-
-[lints]
-workspace = true
-

@@ -7,16 +7,23 @@ use crate::parser_support::parser_result::SkippedUntil;
 use crate::parser_support::ParserResult;
 use crate::text_index::{TextRange, TextRangeExtensions as _};
 
-/// How many tokens have to be matched to trigger the error recovery.
-/// For ambiguous syntaxes this needs to be set to at least N, where N
-/// is the token lookahead required to disambiguate the syntax.
+/// An explicit parameter for the [`ParserResult::recover_until_with_nested_delims`] method.
 #[derive(Clone, Copy)]
-pub(crate) struct TokenAcceptanceThreshold(pub(crate) u8);
+pub(crate) enum RecoverFromNoMatch {
+    Yes,
+    No,
+}
+
+impl RecoverFromNoMatch {
+    pub fn as_bool(self) -> bool {
+        matches!(self, RecoverFromNoMatch::Yes)
+    }
+}
 
 fn opt_parse(
     input: &mut ParserContext<'_>,
     parse: impl Fn(&mut ParserContext<'_>) -> ParserResult,
-) -> Vec<cst::LabeledNode> {
+) -> Vec<cst::NamedNode> {
     let start = input.position();
     if let ParserResult::Match(r#match) = parse(input) {
         r#match.nodes
@@ -39,7 +46,7 @@ impl ParserResult {
         input: &mut ParserContext<'_>,
         lexer: &L,
         expected: TokenKind,
-        acceptance_threshold: TokenAcceptanceThreshold,
+        recover_from_no_match: RecoverFromNoMatch,
     ) -> ParserResult {
         enum ParseResultKind {
             Match,
@@ -50,15 +57,11 @@ impl ParserResult {
         let before_recovery = input.position();
 
         let (mut nodes, mut expected_tokens, result_kind) = match self {
-            ParserResult::IncompleteMatch(result)
-                if result.matches_at_least_n_tokens(acceptance_threshold.0) =>
-            {
-                (
-                    result.nodes,
-                    result.expected_tokens,
-                    ParseResultKind::Incomplete,
-                )
-            }
+            ParserResult::IncompleteMatch(result) => (
+                result.nodes,
+                result.expected_tokens,
+                ParseResultKind::Incomplete,
+            ),
             ParserResult::Match(result)
                 if lexer
                     .peek_token_with_trivia::<LexCtx>(input)
@@ -67,7 +70,7 @@ impl ParserResult {
             {
                 (result.nodes, result.expected_tokens, ParseResultKind::Match)
             }
-            ParserResult::NoMatch(result) if acceptance_threshold.0 == 0 => {
+            ParserResult::NoMatch(result) if recover_from_no_match.as_bool() => {
                 (vec![], result.expected_tokens, ParseResultKind::NoMatch)
             }
             // No need to recover, so just return as-is.

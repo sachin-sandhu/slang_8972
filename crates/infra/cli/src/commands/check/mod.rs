@@ -1,11 +1,10 @@
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use infra_utils::cargo::CargoWorkspace;
-use infra_utils::terminal::Terminal;
 
 use crate::toolchains::mkdocs::Mkdocs;
-use crate::toolchains::napi::{NapiCompiler, NapiProfile, NapiResolver};
-use crate::utils::{ClapExtensions, OrderedCommand};
+use crate::toolchains::napi::{NapiCompiler, NapiProfile};
+use crate::utils::{ClapExtensions, OrderedCommand, Terminal};
 
 #[derive(Clone, Debug, Default, Parser)]
 pub struct CheckController {
@@ -62,9 +61,7 @@ fn check_rustdoc() -> Result<()> {
 }
 
 fn check_npm() -> Result<()> {
-    NapiCompiler::run(&NapiResolver::testlang(), NapiProfile::Debug)?;
-    NapiCompiler::run(&NapiResolver::solidity(), NapiProfile::Debug)?;
-    Ok(())
+    NapiCompiler::run(NapiProfile::Debug)
 }
 
 fn check_mkdocs() -> Result<()> {

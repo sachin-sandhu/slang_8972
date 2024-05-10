@@ -9,6 +9,5 @@ Tree:
   - (YulFunctionCallExpression): # "sub()\n" (0..6)
       - (operand꞉ YulExpression) ► (variant꞉ YulBuiltInFunction) ► (variant꞉ YulSubKeyword): "sub" # (0..3)
       - (open_paren꞉ OpenParen): "(" # (3..4)
-      - (arguments꞉ YulArguments): [] # (4..4)
       - (close_paren꞉ CloseParen): ")" # (4..5)
-      - (trailing_trivia꞉ EndOfLine): "\n" # (5..6)
+      - (TrailingTrivia) ► (EndOfLine): "\n" # (5..6)

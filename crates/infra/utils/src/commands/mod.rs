@@ -175,19 +175,11 @@ fn extract_output(command: &Command, output: Output) -> Result<String> {
 
     match check_status(command, output.status) {
         Ok(()) => Ok(stdout),
-        Err(mut error) => {
-            if !stdout.is_empty() {
-                error = error.context(format!("stdout:\n{stdout}"));
-            }
-
+        Err(error) => {
             let stderr = String::from_utf8(output.stderr)
                 .with_context(|| format!("Failed to read stderr: {command}"))?;
 
-            if !stderr.is_empty() {
-                error = error.context(format!("stderr:\n{stderr}"));
-            }
-
-            Err(error)
+            Err(error).with_context(|| format!("stdout:\n{stdout}\n\nstderr:\n{stderr}"))
         }
     }
 }
@@ -224,7 +216,7 @@ impl Display for Command {
             parts.push("&&".to_owned());
         }
 
-        parts.push(self.name.clone());
+        parts.push(self.name.to_owned());
 
         for arg in &self.args {
             let delimiter = if arg.contains(' ') {

@@ -45,10 +45,10 @@ impl VersionSet {
             // there is some overlap:
             //  make sure 'range' is included in 'from..till', then remove it:
             if range.start < from {
-                from = range.start.clone();
+                from = range.start.to_owned();
             }
             if till < range.end {
-                till = range.end.clone();
+                till = range.end.to_owned();
             }
             false
         });
@@ -89,7 +89,7 @@ impl VersionSet {
 
             if first.start < second.start {
                 // take part of first that exists before second:
-                ranges.push(first.start.clone()..second.start.clone());
+                ranges.push(first.start.to_owned()..second.start.to_owned());
             }
 
             if first.end <= second.end {
@@ -99,7 +99,7 @@ impl VersionSet {
             }
 
             // keep part of first that exists after second:
-            first.start = second.end.clone();
+            first.start = second.end.to_owned();
 
             // advance second, as it's been fully processed:
             second_iter.next();

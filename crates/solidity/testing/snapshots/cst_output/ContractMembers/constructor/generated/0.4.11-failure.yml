@@ -5,7 +5,7 @@ Source: >
 
 Errors: # 1 total
   - >
-    Error: Expected ConstantKeyword or Identifier or InternalKeyword or PrivateKeyword or PublicKeyword.
+    Error: Expected ConstantKeyword or Identifier or InternalKeyword or OverrideKeyword or PrivateKeyword or PublicKeyword.
        ╭─[crates/solidity/testing/snapshots/cst_output/ContractMembers/constructor/input.sol:1:12]
        │
      1 │ constructor() public {}
@@ -15,8 +15,6 @@ Errors: # 1 total
 
 Tree:
   - (ContractMembers): # "constructor() public {}\n" (0..24)
-      - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition): # "constructor" (0..11)
-          - (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "constructor" (0..11)
-              - (item꞉ Identifier): "constructor" # (0..11)
-          - (attributes꞉ StateVariableAttributes): [] # (11..11)
+      - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition) ► (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "constructor" (0..11)
+          - (item꞉ Identifier): "constructor" # (0..11)
       - (SKIPPED): "() public {}\n" # (11..24)

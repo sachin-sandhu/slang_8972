@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::cst::{self, LabeledNode};
+use crate::cst::{self, NamedNode};
 use crate::kinds::TokenKind;
 use crate::lexer::Lexer;
 use crate::parse_error::ParseError;
@@ -13,7 +13,7 @@ pub trait ParserFunction<L>
 where
     Self: Fn(&L, &mut ParserContext<'_>) -> ParserResult,
 {
-    fn parse(&self, language: &L, input: &str) -> ParseOutput;
+    fn parse(&self, language: &L, input: &str, collect_trivia: bool) -> ParseOutput;
 }
 
 impl<L, F> ParserFunction<L> for F
@@ -21,30 +21,33 @@ where
     L: Lexer,
     F: Fn(&L, &mut ParserContext<'_>) -> ParserResult,
 {
-    fn parse(&self, language: &L, input: &str) -> ParseOutput {
+    fn parse(&self, language: &L, input: &str, collect_trivia: bool) -> ParseOutput {
         let mut stream = ParserContext::new(input);
         let mut result = self(language, &mut stream);
 
         // For a succesful/recovered parse, collect any remaining trivia as part of the parse result
-        if let ParserResult::Match(r#match) = &mut result {
-            let [topmost] = r#match.nodes.as_mut_slice() else {
-                unreachable!(
-                    "Match at the top level of a parse does not have exactly one Rule node"
-                )
-            };
+        // TODO(#737): Remove this once we unconditionally collect trivia
+        if collect_trivia {
+            if let ParserResult::Match(r#match) = &mut result {
+                let [topmost] = r#match.nodes.as_mut_slice() else {
+                    unreachable!(
+                        "Match at the top level of a parse does not have exactly one Rule node"
+                    )
+                };
 
-            let eof_trivia = match Lexer::leading_trivia(language, &mut stream) {
-                ParserResult::Match(eof_trivia) if !eof_trivia.nodes.is_empty() => {
-                    Some(eof_trivia.nodes)
+                let eof_trivia = match Lexer::leading_trivia(language, &mut stream) {
+                    ParserResult::Match(eof_trivia) if !eof_trivia.nodes.is_empty() => {
+                        Some(eof_trivia.nodes)
+                    }
+                    _ => None,
+                };
+
+                if let (cst::Node::Rule(rule), Some(eof_trivia)) = (&mut topmost.node, eof_trivia) {
+                    let mut new_children = rule.children.clone();
+                    new_children.extend(eof_trivia);
+
+                    topmost.node = cst::Node::rule(rule.kind, new_children);
                 }
-                _ => None,
-            };
-
-            if let (cst::Node::Rule(rule), Some(eof_trivia)) = (&mut topmost.node, eof_trivia) {
-                let mut new_children = rule.children.clone();
-                new_children.extend(eof_trivia);
-
-                topmost.node = cst::Node::rule(rule.kind, new_children);
             }
         }
 
@@ -56,7 +59,7 @@ where
 
             ParserResult::NoMatch(no_match) => ParseOutput {
                 parse_tree: cst::Node::token(TokenKind::SKIPPED, input.to_string()),
-                errors: vec![ParseError::new(
+                errors: vec![ParseError::new_covering_range(
                     TextIndex::ZERO..input.into(),
                     no_match.expected_tokens,
                 )],
@@ -81,7 +84,7 @@ where
                 };
 
                 let topmost_rule = match &nodes[..] {
-                    [LabeledNode { node: cst::Node::Rule(rule), ..} ] => Rc::clone(rule),
+                    [NamedNode { node: cst::Node::Rule(rule), ..} ] => Rc::clone(rule),
                     [_] => unreachable!(
                         "(Incomplete)Match at the top level of a parser is not a Rule node"
                     ),
@@ -104,10 +107,13 @@ where
                     let skipped_node =
                         cst::Node::token(TokenKind::SKIPPED, input[start.utf8..].to_string());
                     let mut new_children = topmost_rule.children.clone();
-                    new_children.push(LabeledNode::anonymous(skipped_node));
+                    new_children.push(NamedNode::anonymous(skipped_node));
 
                     let mut errors = stream.into_errors();
-                    errors.push(ParseError::new(start..input.into(), expected_tokens));
+                    errors.push(ParseError::new_covering_range(
+                        start..input.into(),
+                        expected_tokens,
+                    ));
 
                     ParseOutput {
                         parse_tree: cst::Node::rule(topmost_rule.kind, new_children),

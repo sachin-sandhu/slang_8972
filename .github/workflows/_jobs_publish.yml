@@ -1,5 +1,9 @@
 name: "jobs/publish"
 
+permissions:
+  contents: "write" # to create new branches and releases
+  pull-requests: "write" # to create new pull requests for changesets
+
 on:
   # Run when invoked from other workflows:
   workflow_call: {}
@@ -8,10 +12,6 @@ jobs:
   changesets:
     runs-on: "ubuntu-22.04" # _SLANG_DEV_CONTAINER_BASE_IMAGE_ (keep in sync)
 
-    permissions:
-      contents: "write" # to create new branches and releases
-      pull-requests: "write" # to create new pull requests for changesets
-
     steps:
       #
       # _DEVCONTAINER_PREPARATION_STEPS_ (keep in sync)
@@ -19,10 +19,10 @@ jobs:
       #
 
       - name: "Clone repository"
-        uses: "actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633"
+        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11"
 
       - name: "Restore CI cache"
-        uses: "actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9"
+        uses: "actions/cache/restore@13aacd865c20de90d75de3b17ebe84f7a17d57d2"
         with:
           key: "cache-${{ github.ref_name }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}"
           restore-keys: |
@@ -41,7 +41,7 @@ jobs:
       - run: "scripts/bin/infra setup npm"
 
       - id: "changesets"
-        uses: "changesets/action@aba318e9165b45b7948c60273e0b72fce0a64eb9"
+        uses: "changesets/action@f13b1baaa620fde937751f5d2c3572b9da32af23"
         with:
           title: "Bump Slang Version"
           commit: "Bump Slang Version"
@@ -66,10 +66,10 @@ jobs:
       #
 
       - name: "Clone repository"
-        uses: "actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633"
+        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11"
 
       - name: "Restore CI cache"
-        uses: "actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9"
+        uses: "actions/cache/restore@13aacd865c20de90d75de3b17ebe84f7a17d57d2"
         with:
           key: "cache-${{ github.ref_name }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}"
           restore-keys: |

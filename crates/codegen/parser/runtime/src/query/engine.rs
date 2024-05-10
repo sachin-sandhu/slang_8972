@@ -31,23 +31,23 @@ impl Cursor {
                 NodeSelector::Anonymous => true,
                 NodeSelector::Kind { kind } => Kind::Rule(rule.kind) == *kind,
                 NodeSelector::Text { .. } => false,
-                NodeSelector::Label { label } => Some(*label) == self.label(),
-                NodeSelector::LabelAndKind { label, kind } => {
-                    Some(*label) == self.label() && Kind::Rule(rule.kind) == *kind
+                NodeSelector::FieldName { field_name } => Some(*field_name) == self.node_name(),
+                NodeSelector::FieldNameAndKind { field_name, kind } => {
+                    Some(*field_name) == self.node_name() && Kind::Rule(rule.kind) == *kind
                 }
-                NodeSelector::LabelAndText { .. } => false,
+                NodeSelector::FieldNameAndText { .. } => false,
             },
 
             cst::Node::Token(token) => match node_selector {
                 NodeSelector::Anonymous => true,
                 NodeSelector::Kind { kind } => Kind::Token(token.kind) == *kind,
                 NodeSelector::Text { text } => token.text == *text,
-                NodeSelector::Label { label } => Some(*label) == self.label(),
-                NodeSelector::LabelAndKind { label, kind } => {
-                    Some(*label) == self.label() && Kind::Token(token.kind) == *kind
+                NodeSelector::FieldName { field_name } => Some(*field_name) == self.node_name(),
+                NodeSelector::FieldNameAndKind { field_name, kind } => {
+                    Some(*field_name) == self.node_name() && Kind::Token(token.kind) == *kind
                 }
-                NodeSelector::LabelAndText { label, text } => {
-                    Some(*label) == self.label() && token.text == *text
+                NodeSelector::FieldNameAndText { field_name, text } => {
+                    Some(*field_name) == self.node_name() && token.text == *text
                 }
             },
         }
@@ -70,20 +70,14 @@ impl Matcher {
 
     fn create_combinator(&self, cursor: Cursor) -> CombinatorRef {
         match self {
-            Self::Binding(matcher) => Box::new(BindingCombinator::new(Rc::clone(matcher), cursor)),
-            Self::Node(matcher) => Box::new(NodeCombinator::new(Rc::clone(matcher), cursor)),
-            Self::Sequence(matcher) => {
-                Box::new(SequenceCombinator::new(Rc::clone(matcher), cursor))
-            }
+            Self::Binding(matcher) => Box::new(BindingCombinator::new(matcher.clone(), cursor)),
+            Self::Node(matcher) => Box::new(NodeCombinator::new(matcher.clone(), cursor)),
+            Self::Sequence(matcher) => Box::new(SequenceCombinator::new(matcher.clone(), cursor)),
             Self::Alternatives(matcher) => {
-                Box::new(AlternativesCombinator::new(Rc::clone(matcher), cursor))
+                Box::new(AlternativesCombinator::new(matcher.clone(), cursor))
             }
-            Self::Optional(matcher) => {
-                Box::new(OptionalCombinator::new(Rc::clone(matcher), cursor))
-            }
-            Self::OneOrMore(matcher) => {
-                Box::new(OneOrMoreCombinator::new(Rc::clone(matcher), cursor))
-            }
+            Self::Optional(matcher) => Box::new(OptionalCombinator::new(matcher.clone(), cursor)),
+            Self::OneOrMore(matcher) => Box::new(OneOrMoreCombinator::new(matcher.clone(), cursor)),
             Self::Ellipsis => Box::new(EllipsisCombinator::new(cursor)),
         }
     }
@@ -187,7 +181,6 @@ impl Combinator for BindingCombinator {
             .entry(self.matcher.name.clone())
             .or_default()
             .push(self.cursor.clone());
-        self.child.accumulate_bindings(bindings);
     }
 }
 

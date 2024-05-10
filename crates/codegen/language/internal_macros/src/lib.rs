@@ -10,7 +10,7 @@ use crate::input_model::InputItem;
 pub fn derive_spanned_type(args: TokenStream, mut input: TokenStream) -> TokenStream {
     let spanned_type = {
         let spanned_derive_args = args.into();
-        let input = input.clone();
+        let input = input.to_owned();
 
         let item = syn::parse_macro_input!(input as InputItem);
         derive::spanned(item, spanned_derive_args)

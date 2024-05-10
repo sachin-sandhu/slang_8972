@@ -1,0 +1,12 @@
+# This file is generated automatically by infrastructure scripts. Please don't edit by hand.
+
+Source: >
+  1  │ hex"ab" hex'cd'                                                                  │ 0..15
+
+Errors: []
+
+Tree:
+  - (HexStringLiterals): # 'hex"ab" hex''cd''' (0..15)
+      - (item꞉ HexStringLiteral): 'hex"ab"' # (0..7)
+      - (LeadingTrivia) ► (Whitespace): " " # (7..8)
+      - (item꞉ HexStringLiteral): "hex'cd'" # (8..15)

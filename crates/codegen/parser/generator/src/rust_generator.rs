@@ -1,9 +1,5 @@
-// TODO(#863): this is getting replaced by runtime templates:
-#![allow(clippy::too_many_lines)]
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-use std::rc::Rc;
 
 use anyhow::Result;
 use codegen_grammar::{
@@ -13,7 +9,6 @@ use codegen_grammar::{
     TriviaParserDefinitionRef,
 };
 use codegen_language_definition::model::Language;
-use indexmap::IndexMap;
 use infra_utils::cargo::CargoWorkspace;
 use infra_utils::codegen::Codegen;
 use quote::{format_ident, quote};
@@ -33,15 +28,14 @@ pub struct RustGenerator {
 
     rule_kinds: BTreeSet<&'static str>,
     token_kinds: BTreeSet<&'static str>,
-    trivia_scanner_names: BTreeSet<&'static str>,
-    labels: BTreeSet<String>,
+    trivia_kinds: BTreeSet<&'static str>,
+    field_names: BTreeSet<String>,
 
     scanner_functions: BTreeMap<&'static str, String>, // (name of scanner, code)
     scanner_contexts: BTreeMap<&'static str, ScannerContext>,
     keyword_compound_scanners: BTreeMap<&'static str, String>, // (name of the KW scanner, code)
 
     parser_functions: BTreeMap<&'static str, String>, // (name of parser, code)
-    trivia_parser_functions: BTreeMap<&'static str, String>, // (name of parser, code)
 
     #[serde(skip)]
     top_level_scanner_names: BTreeSet<&'static str>,
@@ -105,32 +99,6 @@ impl RustGenerator {
 
         {
             #[derive(Serialize)]
-            struct Context {
-                queries: IndexMap<String, Vec<&'static str>>,
-            }
-
-            let queries = language
-                .queries
-                .keys()
-                .enumerate()
-                .map(|(index, key)| {
-                    // TODO(#554): parse the query and extract the real captures:
-                    (
-                        key.to_string(),
-                        ["foo", "bar", "baz"].into_iter().take(index + 1).collect(),
-                    )
-                })
-                .collect();
-
-            codegen.render(
-                Context { queries },
-                runtime_dir.join("templates/user_defined_queries.rs.jinja2"),
-                output_dir.join("query/user_defined_queries.rs"),
-            )?;
-        }
-
-        {
-            #[derive(Serialize)]
             struct Context<'a> {
                 generator: &'a RustGenerator,
                 language_name: String,
@@ -147,9 +115,10 @@ impl RustGenerator {
             )?;
         }
 
-        #[allow(clippy::single_element_loop)]
-        // kept in case there is once again more than one of these
-        for (src_file, destination_file) in &[("mod_for_destination.rs", "mod.rs")] {
+        for (src_file, destination_file) in &[
+            ("query/mod_for_destination.rs", "query/mod.rs"),
+            ("mod_for_destination.rs", "mod.rs"),
+        ] {
             codegen.copy_file(
                 runtime_dir.join(src_file),
                 output_dir.join(destination_file),
@@ -160,32 +129,30 @@ impl RustGenerator {
             "cst.rs",
             "cursor.rs",
             "lexer.rs",
-            "napi_interface/cst.rs",
-            "napi_interface/cursor.rs",
-            "napi_interface/mod.rs",
-            "napi_interface/parse_error.rs",
-            "napi_interface/parse_output.rs",
-            "napi_interface/query.rs",
-            "napi_interface/text_index.rs",
             "parse_error.rs",
             "parse_output.rs",
-            "parser_support/choice_helper.rs",
-            "parser_support/context.rs",
-            "parser_support/mod.rs",
-            "parser_support/optional_helper.rs",
-            "parser_support/parser_function.rs",
-            "parser_support/parser_result.rs",
-            "parser_support/precedence_helper.rs",
-            "parser_support/recovery.rs",
-            "parser_support/repetition_helper.rs",
-            "parser_support/scanner_macros.rs",
-            "parser_support/separated_helper.rs",
-            "parser_support/sequence_helper.rs",
             "query/engine.rs",
-            "query/mod.rs",
             "query/model.rs",
             "query/parser.rs",
             "text_index.rs",
+            "napi_interface/cst.rs",
+            "napi_interface/cursor.rs",
+            "napi_interface/parse_error.rs",
+            "napi_interface/parse_output.rs",
+            "napi_interface/text_index.rs",
+            "napi_interface/mod.rs",
+            "parser_support/mod.rs",
+            "parser_support/context.rs",
+            "parser_support/parser_function.rs",
+            "parser_support/optional_helper.rs",
+            "parser_support/sequence_helper.rs",
+            "parser_support/repetition_helper.rs",
+            "parser_support/choice_helper.rs",
+            "parser_support/precedence_helper.rs",
+            "parser_support/parser_result.rs",
+            "parser_support/recovery.rs",
+            "parser_support/separated_helper.rs",
+            "parser_support/scanner_macros.rs",
         ] {
             codegen.copy_file(runtime_dir.join(file), output_dir.join(file))?;
         }
@@ -231,7 +198,7 @@ impl GrammarVisitor for RustGenerator {
                     context.compound_scanner_names.push(scanner_name);
                 } else {
                     for literal in literals {
-                        literal_trie.insert(&literal, Rc::clone(scanner));
+                        literal_trie.insert(&literal, scanner.clone());
                     }
                 }
             }
@@ -272,17 +239,15 @@ impl GrammarVisitor for RustGenerator {
             .collect();
 
         // Make sure empty strings are not there
-        self.labels.remove("");
+        self.field_names.remove("");
         // These are built-in and already pre-defined
-        // _SLANG_INTERNAL_RESERVED_NODE_LABELS_ (keep in sync)
-        self.labels.remove("item");
-        self.labels.remove("variant");
-        self.labels.remove("separator");
-        self.labels.remove("operand");
-        self.labels.remove("left_operand");
-        self.labels.remove("right_operand");
-        self.labels.remove("leading_trivia");
-        self.labels.remove("trailing_trivia");
+        // _SLANG_INTERNAL_RESERVED_NODE_FIELD_NAMES_ (keep in sync)
+        self.field_names.remove("item");
+        self.field_names.remove("variant");
+        self.field_names.remove("separator");
+        self.field_names.remove("operand");
+        self.field_names.remove("left_operand");
+        self.field_names.remove("right_operand");
 
         // Just being anal about tidying up :)
         self.all_scanners.clear();
@@ -290,7 +255,7 @@ impl GrammarVisitor for RustGenerator {
     }
 
     fn scanner_definition_enter(&mut self, scanner: &ScannerDefinitionRef) {
-        self.all_scanners.insert(scanner.name(), Rc::clone(scanner));
+        self.all_scanners.insert(scanner.name(), scanner.clone());
     }
 
     fn keyword_scanner_definition_enter(&mut self, scanner: &KeywordScannerDefinitionRef) {
@@ -309,27 +274,17 @@ impl GrammarVisitor for RustGenerator {
 
     fn trivia_parser_definition_enter(&mut self, parser: &TriviaParserDefinitionRef) {
         self.set_current_context(parser.context());
-        let trivia_scanners = {
-            use codegen_grammar::Visitable as _;
-
-            #[derive(Default)]
-            struct CollectTriviaScanners {
-                scanner_names: BTreeSet<&'static str>,
+        self.rule_kinds.insert(parser.name());
+        self.trivia_kinds.insert(parser.name());
+        self.parser_functions.insert(
+            parser.name(),
+            {
+                let code = parser.to_parser_code();
+                let rule_kind = format_ident!("{}", parser.name());
+                quote! { #code.with_kind(RuleKind::#rule_kind) }
             }
-            impl codegen_grammar::GrammarVisitor for CollectTriviaScanners {
-                fn scanner_definition_enter(&mut self, node: &ScannerDefinitionRef) {
-                    self.scanner_names.insert(node.name());
-                }
-            }
-
-            let mut visitor = CollectTriviaScanners::default();
-            parser.node().accept_visitor(&mut visitor);
-            visitor.scanner_names
-        };
-        self.trivia_scanner_names.extend(trivia_scanners);
-
-        self.trivia_parser_functions
-            .insert(parser.name(), parser.to_parser_code().to_string());
+            .to_string(),
+        );
     }
 
     fn parser_definition_enter(&mut self, parser: &ParserDefinitionRef) {
@@ -401,30 +356,30 @@ impl GrammarVisitor for RustGenerator {
 
                 self.current_context()
                     .keyword_scanner_defs
-                    .insert(scanner.name(), Rc::clone(scanner));
+                    .insert(scanner.name(), scanner.clone());
             }
 
-            // Collect labels:
+            // Collect field names
             ParserDefinitionNode::Choice(choice) => {
-                self.labels.insert(choice.label.clone());
+                self.field_names.insert(choice.name.clone());
             }
             ParserDefinitionNode::Sequence(sequence) => {
                 for node in sequence {
-                    self.labels.insert(node.label.clone());
+                    self.field_names.insert(node.name.clone());
                 }
             }
             ParserDefinitionNode::SeparatedBy(item, separator) => {
-                self.labels.insert(item.label.clone());
-                self.labels.insert(separator.label.clone());
+                self.field_names.insert(item.name.clone());
+                self.field_names.insert(separator.name.clone());
             }
             ParserDefinitionNode::TerminatedBy(_, terminator) => {
-                self.labels.insert(terminator.label.clone());
+                self.field_names.insert(terminator.name.clone());
             }
 
             // Collect delimiters for each context
-            ParserDefinitionNode::DelimitedBy(open, _, close, ..) => {
-                self.labels.insert(open.label.clone());
-                self.labels.insert(close.label.clone());
+            ParserDefinitionNode::DelimitedBy(open, _, close) => {
+                self.field_names.insert(open.name.clone());
+                self.field_names.insert(close.name.clone());
 
                 let (open, close) = match (open.as_ref(), close.as_ref()) {
                     (

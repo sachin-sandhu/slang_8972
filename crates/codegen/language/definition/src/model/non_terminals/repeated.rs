@@ -10,6 +10,4 @@ pub struct RepeatedItem {
     pub reference: Identifier,
 
     pub enabled: Option<VersionSpecifier>,
-
-    pub allow_empty: Option<bool>,
 }

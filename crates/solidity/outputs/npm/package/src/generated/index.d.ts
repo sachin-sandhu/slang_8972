@@ -18,6 +18,7 @@ export namespace kinds {
     ArrayExpression = "ArrayExpression",
     ArrayTypeName = "ArrayTypeName",
     ArrayValues = "ArrayValues",
+    AsciiStringLiterals = "AsciiStringLiterals",
     AssemblyFlags = "AssemblyFlags",
     AssemblyFlagsDeclaration = "AssemblyFlagsDeclaration",
     AssemblyStatement = "AssemblyStatement",
@@ -27,8 +28,6 @@ export namespace kinds {
     BitwiseXorExpression = "BitwiseXorExpression",
     Block = "Block",
     BreakStatement = "BreakStatement",
-    CallOptions = "CallOptions",
-    CallOptionsExpression = "CallOptionsExpression",
     CatchClause = "CatchClause",
     CatchClauseError = "CatchClauseError",
     CatchClauses = "CatchClauses",
@@ -43,6 +42,7 @@ export namespace kinds {
     ContractMember = "ContractMember",
     ContractMembers = "ContractMembers",
     DecimalNumberExpression = "DecimalNumberExpression",
+    DeleteStatement = "DeleteStatement",
     DoWhileStatement = "DoWhileStatement",
     ElementaryType = "ElementaryType",
     ElseBranch = "ElseBranch",
@@ -73,13 +73,13 @@ export namespace kinds {
     FunctionAttributes = "FunctionAttributes",
     FunctionBody = "FunctionBody",
     FunctionCallExpression = "FunctionCallExpression",
+    FunctionCallOptions = "FunctionCallOptions",
     FunctionDefinition = "FunctionDefinition",
     FunctionName = "FunctionName",
     FunctionType = "FunctionType",
     FunctionTypeAttribute = "FunctionTypeAttribute",
     FunctionTypeAttributes = "FunctionTypeAttributes",
     HexNumberExpression = "HexNumberExpression",
-    HexStringLiteral = "HexStringLiteral",
     HexStringLiterals = "HexStringLiterals",
     IdentifierPath = "IdentifierPath",
     IfStatement = "IfStatement",
@@ -96,6 +96,7 @@ export namespace kinds {
     InheritanceTypes = "InheritanceTypes",
     InterfaceDefinition = "InterfaceDefinition",
     InterfaceMembers = "InterfaceMembers",
+    LeadingTrivia = "LeadingTrivia",
     LibraryDefinition = "LibraryDefinition",
     LibraryMembers = "LibraryMembers",
     MappingKey = "MappingKey",
@@ -111,6 +112,7 @@ export namespace kinds {
     MultiplicativeExpression = "MultiplicativeExpression",
     NamedArgument = "NamedArgument",
     NamedArgumentGroup = "NamedArgumentGroup",
+    NamedArgumentGroups = "NamedArgumentGroups",
     NamedArguments = "NamedArguments",
     NamedArgumentsDeclaration = "NamedArgumentsDeclaration",
     NamedImport = "NamedImport",
@@ -148,12 +150,11 @@ export namespace kinds {
     Statements = "Statements",
     StorageLocation = "StorageLocation",
     StringExpression = "StringExpression",
-    StringLiteral = "StringLiteral",
-    StringLiterals = "StringLiterals",
     StructDefinition = "StructDefinition",
     StructMember = "StructMember",
     StructMembers = "StructMembers",
     ThrowStatement = "ThrowStatement",
+    TrailingTrivia = "TrailingTrivia",
     TryStatement = "TryStatement",
     TupleDeconstructionElement = "TupleDeconstructionElement",
     TupleDeconstructionElements = "TupleDeconstructionElements",
@@ -166,7 +167,6 @@ export namespace kinds {
     TypeName = "TypeName",
     TypedTupleMember = "TypedTupleMember",
     UncheckedBlock = "UncheckedBlock",
-    UnicodeStringLiteral = "UnicodeStringLiteral",
     UnicodeStringLiterals = "UnicodeStringLiterals",
     UnnamedFunctionAttribute = "UnnamedFunctionAttribute",
     UnnamedFunctionAttributes = "UnnamedFunctionAttributes",
@@ -184,36 +184,32 @@ export namespace kinds {
     VariableDeclarationStatement = "VariableDeclarationStatement",
     VariableDeclarationType = "VariableDeclarationType",
     VariableDeclarationValue = "VariableDeclarationValue",
-    VersionComparator = "VersionComparator",
-    VersionExpression = "VersionExpression",
-    VersionExpressionSet = "VersionExpressionSet",
-    VersionExpressionSets = "VersionExpressionSets",
     VersionPragma = "VersionPragma",
-    VersionRange = "VersionRange",
-    VersionSpecifiers = "VersionSpecifiers",
+    VersionPragmaExpression = "VersionPragmaExpression",
+    VersionPragmaExpressions = "VersionPragmaExpressions",
+    VersionPragmaOrExpression = "VersionPragmaOrExpression",
+    VersionPragmaPrefixExpression = "VersionPragmaPrefixExpression",
+    VersionPragmaRangeExpression = "VersionPragmaRangeExpression",
+    VersionPragmaSpecifier = "VersionPragmaSpecifier",
     WhileStatement = "WhileStatement",
     YulArguments = "YulArguments",
-    YulAssignmentOperator = "YulAssignmentOperator",
     YulAssignmentStatement = "YulAssignmentStatement",
     YulBlock = "YulBlock",
     YulBreakStatement = "YulBreakStatement",
     YulBuiltInFunction = "YulBuiltInFunction",
-    YulColonAndEqual = "YulColonAndEqual",
     YulContinueStatement = "YulContinueStatement",
     YulDefaultCase = "YulDefaultCase",
     YulExpression = "YulExpression",
     YulForStatement = "YulForStatement",
     YulFunctionCallExpression = "YulFunctionCallExpression",
     YulFunctionDefinition = "YulFunctionDefinition",
+    YulIdentifierPath = "YulIdentifierPath",
+    YulIdentifierPaths = "YulIdentifierPaths",
     YulIfStatement = "YulIfStatement",
-    YulLabel = "YulLabel",
     YulLeaveStatement = "YulLeaveStatement",
     YulLiteral = "YulLiteral",
     YulParameters = "YulParameters",
     YulParametersDeclaration = "YulParametersDeclaration",
-    YulPath = "YulPath",
-    YulPathComponent = "YulPathComponent",
-    YulPaths = "YulPaths",
     YulReturnVariables = "YulReturnVariables",
     YulReturnsDeclaration = "YulReturnsDeclaration",
     YulStatement = "YulStatement",
@@ -225,15 +221,13 @@ export namespace kinds {
     YulVariableDeclarationStatement = "YulVariableDeclarationStatement",
     YulVariableDeclarationValue = "YulVariableDeclarationValue",
   }
-  export enum NodeLabel {
+  export enum FieldName {
     Item = "Item",
     Variant = "Variant",
     Separator = "Separator",
     Operand = "Operand",
     LeftOperand = "LeftOperand",
     RightOperand = "RightOperand",
-    LeadingTrivia = "LeadingTrivia",
-    TrailingTrivia = "TrailingTrivia",
     AbicoderKeyword = "AbicoderKeyword",
     AbstractKeyword = "AbstractKeyword",
     AddressKeyword = "AddressKeyword",
@@ -242,7 +236,6 @@ export namespace kinds {
     Arguments = "Arguments",
     AsKeyword = "AsKeyword",
     AssemblyKeyword = "AssemblyKeyword",
-    Assignment = "Assignment",
     Asterisk = "Asterisk",
     Attributes = "Attributes",
     Block = "Block",
@@ -257,12 +250,14 @@ export namespace kinds {
     CloseBracket = "CloseBracket",
     CloseParen = "CloseParen",
     Colon = "Colon",
+    ColonEqual = "ColonEqual",
     Condition = "Condition",
     ConstantKeyword = "ConstantKeyword",
     ConstructorKeyword = "ConstructorKeyword",
     ContinueKeyword = "ContinueKeyword",
     ContractKeyword = "ContractKeyword",
     DefaultKeyword = "DefaultKeyword",
+    DeleteKeyword = "DeleteKeyword",
     DoKeyword = "DoKeyword",
     Elements = "Elements",
     ElseBranch = "ElseBranch",
@@ -278,6 +273,7 @@ export namespace kinds {
     EventKeyword = "EventKeyword",
     ExperimentalKeyword = "ExperimentalKeyword",
     Expression = "Expression",
+    Expressions = "Expressions",
     FallbackKeyword = "FallbackKeyword",
     FalseExpression = "FalseExpression",
     Feature = "Feature",
@@ -332,7 +328,6 @@ export namespace kinds {
     ReturnsKeyword = "ReturnsKeyword",
     RevertKeyword = "RevertKeyword",
     Semicolon = "Semicolon",
-    Sets = "Sets",
     SolidityKeyword = "SolidityKeyword",
     Start = "Start",
     Statements = "Statements",
@@ -352,7 +347,6 @@ export namespace kinds {
     UsingKeyword = "UsingKeyword",
     Value = "Value",
     ValueType = "ValueType",
-    VarKeyword = "VarKeyword",
     VariableType = "VariableType",
     Variables = "Variables",
     Version = "Version",
@@ -371,6 +365,7 @@ export namespace kinds {
     AnonymousKeyword = "AnonymousKeyword",
     ApplyKeyword = "ApplyKeyword",
     AsKeyword = "AsKeyword",
+    AsciiStringLiteral = "AsciiStringLiteral",
     AssemblyKeyword = "AssemblyKeyword",
     Asterisk = "Asterisk",
     AsteriskAsterisk = "AsteriskAsterisk",
@@ -407,10 +402,6 @@ export namespace kinds {
     DefineKeyword = "DefineKeyword",
     DeleteKeyword = "DeleteKeyword",
     DoKeyword = "DoKeyword",
-    DoubleQuotedHexStringLiteral = "DoubleQuotedHexStringLiteral",
-    DoubleQuotedStringLiteral = "DoubleQuotedStringLiteral",
-    DoubleQuotedUnicodeStringLiteral = "DoubleQuotedUnicodeStringLiteral",
-    DoubleQuotedVersionLiteral = "DoubleQuotedVersionLiteral",
     ElseKeyword = "ElseKeyword",
     EmitKeyword = "EmitKeyword",
     EndOfLine = "EndOfLine",
@@ -441,6 +432,7 @@ export namespace kinds {
     GweiKeyword = "GweiKeyword",
     HexKeyword = "HexKeyword",
     HexLiteral = "HexLiteral",
+    HexStringLiteral = "HexStringLiteral",
     HoursKeyword = "HoursKeyword",
     Identifier = "Identifier",
     IfKeyword = "IfKeyword",
@@ -505,10 +497,6 @@ export namespace kinds {
     Semicolon = "Semicolon",
     SingleLineComment = "SingleLineComment",
     SingleLineNatSpecComment = "SingleLineNatSpecComment",
-    SingleQuotedHexStringLiteral = "SingleQuotedHexStringLiteral",
-    SingleQuotedStringLiteral = "SingleQuotedStringLiteral",
-    SingleQuotedUnicodeStringLiteral = "SingleQuotedUnicodeStringLiteral",
-    SingleQuotedVersionLiteral = "SingleQuotedVersionLiteral",
     SizeOfKeyword = "SizeOfKeyword",
     Slash = "Slash",
     SlashEqual = "SlashEqual",
@@ -530,9 +518,10 @@ export namespace kinds {
     UfixedKeyword = "UfixedKeyword",
     UintKeyword = "UintKeyword",
     UncheckedKeyword = "UncheckedKeyword",
+    UnicodeStringLiteral = "UnicodeStringLiteral",
     UsingKeyword = "UsingKeyword",
     VarKeyword = "VarKeyword",
-    VersionSpecifier = "VersionSpecifier",
+    VersionPragmaValue = "VersionPragmaValue",
     ViewKeyword = "ViewKeyword",
     VirtualKeyword = "VirtualKeyword",
     WeeksKeyword = "WeeksKeyword",
@@ -554,8 +543,6 @@ export namespace kinds {
     YulAutoKeyword = "YulAutoKeyword",
     YulBalanceKeyword = "YulBalanceKeyword",
     YulBaseFeeKeyword = "YulBaseFeeKeyword",
-    YulBlobBaseFeeKeyword = "YulBlobBaseFeeKeyword",
-    YulBlobHashKeyword = "YulBlobHashKeyword",
     YulBlockHashKeyword = "YulBlockHashKeyword",
     YulBoolKeyword = "YulBoolKeyword",
     YulBreakKeyword = "YulBreakKeyword",
@@ -639,7 +626,6 @@ export namespace kinds {
     YulLog3Keyword = "YulLog3Keyword",
     YulLog4Keyword = "YulLog4Keyword",
     YulLtKeyword = "YulLtKeyword",
-    YulMCopyKeyword = "YulMCopyKeyword",
     YulMLoadKeyword = "YulMLoadKeyword",
     YulMSizeKeyword = "YulMSizeKeyword",
     YulMStore8Keyword = "YulMStore8Keyword",
@@ -706,8 +692,6 @@ export namespace kinds {
     YulSupportsKeyword = "YulSupportsKeyword",
     YulSwitchKeyword = "YulSwitchKeyword",
     YulSzaboKeyword = "YulSzaboKeyword",
-    YulTLoadKeyword = "YulTLoadKeyword",
-    YulTStoreKeyword = "YulTStoreKeyword",
     YulThrowKeyword = "YulThrowKeyword",
     YulTimestampKeyword = "YulTimestampKeyword",
     YulTrueKeyword = "YulTrueKeyword",
@@ -745,8 +729,8 @@ export namespace ast_internal {
 }
 export namespace cst {
   export enum NodeType {
-    Rule = "Rule",
-    Token = "Token",
+    Rule = 0,
+    Token = 1,
   }
   export class RuleNode {
     get type(): NodeType.Rule;
@@ -754,8 +738,6 @@ export namespace cst {
     get textLength(): text_index.TextIndex;
     children(): Array<cst.Node>;
     createCursor(textOffset: text_index.TextIndex): cursor.Cursor;
-    /** Serialize the token node to JSON. */
-    toJSON(): string;
     unparse(): string;
   }
   export class TokenNode {
@@ -763,12 +745,6 @@ export namespace cst {
     get kind(): kinds.TokenKind;
     get textLength(): text_index.TextIndex;
     get text(): string;
-    /**
-     * Serialize the token node to JSON.
-     *
-     * This method is intended for debugging purposes and may not be stable.
-     */
-    toJSON(): string;
     createCursor(textOffset: text_index.TextIndex): cursor.Cursor;
   }
 }
@@ -780,7 +756,7 @@ export namespace cursor {
     spawn(): Cursor;
     get isCompleted(): boolean;
     node(): cst.Node;
-    get label(): kinds.NodeLabel;
+    get nodeName(): kinds.FieldName;
     get textOffset(): text_index.TextIndex;
     get textRange(): text_index.TextRange;
     get depth(): number;
@@ -800,7 +776,6 @@ export namespace cursor {
     goToNextRule(): boolean;
     goToNextRuleWithKind(kind: kinds.RuleKind): boolean;
     goToNextRuleWithKinds(kinds: Array<kinds.RuleKind>): boolean;
-    query(queries: Array<query.Query>): query.QueryResultIterator;
   }
 }
 export namespace parse_error {
@@ -816,18 +791,6 @@ export namespace parse_output {
     get isValid(): boolean;
     /** Creates a cursor that starts at the root of the parse tree. */
     createTreeCursor(): cursor.Cursor;
-  }
-}
-export namespace query {
-  export interface QueryResult {
-    queryNumber: number;
-    bindings: { [key: string]: cursor.Cursor[] };
-  }
-  export class Query {
-    static parse(text: string): Query;
-  }
-  export class QueryResultIterator {
-    next(): QueryResult | null;
   }
 }
 export namespace text_index {

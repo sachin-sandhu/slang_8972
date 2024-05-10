@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::rc::Rc;
 
 use crate::compiler::analysis::{Analysis, ItemMetadata};
 use crate::compiler::version_set::VersionSet;
@@ -14,7 +13,7 @@ pub(crate) fn analyze_definitions(analysis: &mut Analysis) {
 }
 
 fn collect_top_level_items(analysis: &mut Analysis) {
-    let language = Rc::clone(&analysis.language);
+    let language = analysis.language.clone();
 
     for item in language.items() {
         let name = get_item_name(item);
@@ -25,7 +24,7 @@ fn collect_top_level_items(analysis: &mut Analysis) {
         }
 
         analysis.metadata.insert(
-            (**name).clone(),
+            (**name).to_owned(),
             ItemMetadata {
                 name: name.clone(),
                 item: item.clone(),
@@ -41,7 +40,7 @@ fn collect_top_level_items(analysis: &mut Analysis) {
 }
 
 fn check_enum_items(analysis: &mut Analysis) {
-    for item in Rc::clone(&analysis.language).items() {
+    for item in analysis.language.clone().items() {
         let SpannedItem::Enum { item } = item else {
             continue;
         };
@@ -64,7 +63,7 @@ fn check_precedence_items(analysis: &mut Analysis) {
     // However, they cannot be referenced from anywhere else, so no need to add them to top-level definitions.
     let mut all_expressions = HashSet::new();
 
-    for item in Rc::clone(&analysis.language).items() {
+    for item in analysis.language.clone().items() {
         let SpannedItem::Precedence { item } = item else {
             continue;
         };

@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
-use crate::cst::{self, LabeledNode};
-use crate::kinds::{NodeLabel, TokenKind};
+use crate::cst::{self, NamedNode};
+use crate::kinds::{FieldName, TokenKind};
 use crate::parser_support::parser_result::{Match, ParserResult, PrattElement, SkippedUntil};
 
 /// Keeps accumulating parses sequentially until it hits an incomplete or no match.
@@ -19,6 +19,12 @@ enum State {
 }
 
 impl SequenceHelper {
+    pub fn new() -> Self {
+        SequenceHelper {
+            result: State::Empty,
+        }
+    }
+
     /// Whether the sequence cannot make more progress.
     pub fn is_done(&self) -> bool {
         matches!(
@@ -123,29 +129,19 @@ impl SequenceHelper {
                         return;
                     }
 
-                    // We only support skipping to a single, significant token.
-                    // Sanity check that we are recovering to the expected one.
-                    let next_token = next.nodes.iter().try_fold(None, |acc, node| {
-                        match &**node {
-                            cst::Node::Token(token) if token.kind.is_trivia() => Ok(acc),
-                            cst::Node::Token(token) => {
-                                match acc {
-                                    None => Ok(Some(token.kind)),
-                                    Some(..) => {
-                                        debug_assert!(false, "Recovery skipped to multiple tokens: {acc:?}, {token:?}");
-                                        Err(())
-                                    }
-                                }
-                            }
-                            cst::Node::Rule(rule) => {
-                                debug_assert!(false, "Recovery skipped to a rule: {rule:?}");
-                                Err(())
-                            }
-                        }
-                    });
-                    debug_assert_eq!(next_token, Ok(Some(running.found)));
+                    let tokens: Vec<_> =
+                        next.nodes.iter().filter_map(|node| node.as_token()).collect();
+                    let mut rules = next.nodes.iter().filter_map(|node| node.as_rule());
 
-                    running.nodes.push(LabeledNode::anonymous(cst::Node::token(
+                    let is_single_token_with_trivia =
+                        tokens.len() == 1 && rules.all(|rule| rule.kind.is_trivia());
+                    let next_token = tokens.first().map(|token| token.kind);
+
+                    // NOTE: We only support skipping to a single token (optionally with trivia)
+                    debug_assert!(is_single_token_with_trivia);
+                    debug_assert_eq!(next_token, Some(running.found));
+
+                    running.nodes.push(NamedNode::anonymous(cst::Node::token(
                         TokenKind::SKIPPED,
                         std::mem::take(&mut running.skipped),
                     )));
@@ -194,13 +190,13 @@ impl SequenceHelper {
 
     /// Aggregates a parse result into the sequence. If we cannot make progress, returns the accumulated match.
     ///
-    /// Shorthand for `self.elem(value.with_label(label))`.
-    pub fn elem_labeled(
+    /// Shorthand for `self.elem(value.with_name(name))`.
+    pub fn elem_named(
         &mut self,
-        label: NodeLabel,
+        name: FieldName,
         value: ParserResult,
     ) -> ControlFlow<ParserResult, &mut Self> {
-        self.elem(value.with_label(label))
+        self.elem(value.with_name(name))
     }
 
     /// Finishes the sequence parse, returning the accumulated match.

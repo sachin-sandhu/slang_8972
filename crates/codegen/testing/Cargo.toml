@@ -8,9 +8,4 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 codegen_language_definition = { workspace = true }
-Inflector = { workspace = true }
 infra_utils = { workspace = true }
-
-[lints]
-workspace = true
-

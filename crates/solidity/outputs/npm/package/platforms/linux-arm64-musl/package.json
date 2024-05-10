@@ -1,6 +1,6 @@
 {
   "name": "@nomicfoundation/slang-linux-arm64-musl",
-  "version": "0.14.2",
+  "version": "0.13.1",
   "description": "Platform-specific binaries for @nomicfoundation/slang.",
   "homepage": "https://nomicfoundation.github.io/slang/",
   "license": "MIT",
@@ -31,6 +31,15 @@
   "files": [
     "index.linux-arm64-musl.node",
     "README.md"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "libc": [
+    "musl"
   ],
   "engines": {
     "node": ">= 10"

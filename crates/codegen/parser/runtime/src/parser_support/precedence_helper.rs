@@ -1,5 +1,5 @@
-use crate::cst::{self, LabeledNode};
-use crate::kinds::{NodeLabel, RuleKind};
+use crate::cst::{self, NamedNode};
+use crate::kinds::{FieldName, RuleKind};
 use crate::parser_support::parser_result::PrattElement::{
     self, Binary, Expression, Postfix, Prefix,
 };
@@ -150,21 +150,21 @@ impl PrecedenceHelper {
 
             let make_expression = |left: Option<PrattElement>,
                                    kind: RuleKind,
-                                   nodes: Vec<cst::LabeledNode>,
+                                   nodes: Vec<cst::NamedNode>,
                                    right: Option<PrattElement>| {
                 assert!(left.is_some() || right.is_some());
 
-                let left_label = right
+                let left_name = right
                     .as_ref()
-                    .map_or(NodeLabel::Operand, |_| NodeLabel::LeftOperand);
-                let right_label = left
+                    .map_or(FieldName::Operand, |_| FieldName::LeftOperand);
+                let right_name = left
                     .as_ref()
-                    .map_or(NodeLabel::Operand, |_| NodeLabel::RightOperand);
+                    .map_or(FieldName::Operand, |_| FieldName::RightOperand);
 
                 let left_nodes = match left {
                     Some(Expression { nodes }) => {
-                        vec![LabeledNode {
-                            label: Some(left_label),
+                        vec![NamedNode {
+                            name: Some(left_name),
                             node: cst::Node::rule(child_kind, nodes),
                         }]
                     }
@@ -174,8 +174,8 @@ impl PrecedenceHelper {
 
                 let right_nodes = match right {
                     Some(Expression { nodes }) => {
-                        vec![LabeledNode {
-                            label: Some(right_label),
+                        vec![NamedNode {
+                            name: Some(right_name),
                             node: cst::Node::rule(child_kind, nodes),
                         }]
                     }
@@ -186,8 +186,8 @@ impl PrecedenceHelper {
                 let children = [left_nodes, nodes, right_nodes].concat();
 
                 Expression {
-                    nodes: vec![LabeledNode {
-                        label: Some(NodeLabel::Variant),
+                    nodes: vec![NamedNode {
+                        name: Some(FieldName::Variant),
                         node: cst::Node::rule(kind, children),
                     }],
                 }

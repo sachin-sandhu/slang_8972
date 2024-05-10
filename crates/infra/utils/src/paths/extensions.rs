@@ -14,8 +14,6 @@ pub trait PathExtensions {
 
     fn unwrap_str(&self) -> &str;
 
-    fn unwrap_string(&self) -> String;
-
     fn unwrap_name(&self) -> &str;
 
     fn unwrap_parent(&self) -> &Path;
@@ -79,10 +77,6 @@ impl PathExtensions for Path {
             .to_str()
             .with_context(|| format!("Failed to convert path to str: {self:?}"))
             .unwrap();
-    }
-
-    fn unwrap_string(&self) -> String {
-        self.unwrap_str().to_owned()
     }
 
     fn unwrap_name(&self) -> &str {

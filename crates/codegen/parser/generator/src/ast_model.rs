@@ -221,10 +221,10 @@ impl AstModel {
 
         match operator.model {
             model::OperatorModel::Prefix => {
-                fields.push(operand("operand"));
+                fields.insert(0, operand("operand"));
             }
             model::OperatorModel::Postfix => {
-                fields.insert(0, operand("operand"));
+                fields.push(operand("operand"));
             }
             model::OperatorModel::BinaryLeftAssociative
             | model::OperatorModel::BinaryRightAssociative => {
@@ -237,7 +237,7 @@ impl AstModel {
     }
 
     /// Temporary hack to assert that types are consistent.
-    /// TODO(#872): Replace with DSL validation/intellisense afterwards.
+    /// TODO(#637): Replace with DSL validation/intellisense afterwards.
     fn pick_operator<'a>(
         &mut self,
         expression: &'a model::PrecedenceExpression,

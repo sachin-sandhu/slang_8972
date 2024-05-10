@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::rc::Rc;
 
 use anyhow::Result;
 use infra_utils::paths::PathExtensions;
@@ -40,20 +39,19 @@ fn using_the_parser() -> Result<()> {
 
     let contract = parse_tree.as_rule().unwrap();
     assert_eq!(contract.kind, RuleKind::ContractDefinition);
-    assert_eq!(contract.children.len(), 7);
+    assert_eq!(contract.children.len(), 6);
 
     let children = &contract.children;
     assert!(matches!(&children[0].node, Node::Token(t) if t.kind == TokenKind::ContractKeyword));
-    assert!(matches!(&children[1].node, Node::Token(t) if t.kind == TokenKind::Whitespace));
+    assert!(matches!(&children[1].node, Node::Rule(r) if r.kind == RuleKind::LeadingTrivia));
     assert!(matches!(&children[2].node, Node::Token(t) if t.kind == TokenKind::Identifier));
-    assert!(matches!(&children[3].node, Node::Token(t) if t.kind == TokenKind::Whitespace));
+    assert!(matches!(&children[3].node, Node::Rule(r) if r.kind == RuleKind::LeadingTrivia));
     assert!(matches!(&children[4].node, Node::Token(t) if t.kind == TokenKind::OpenBrace));
-    assert!(matches!(&children[5].node, Node::Rule(r) if r.kind == RuleKind::ContractMembers));
-    assert!(matches!(&children[6].node, Node::Token(t) if t.kind == TokenKind::CloseBrace));
+    assert!(matches!(&children[5].node, Node::Token(t) if t.kind == TokenKind::CloseBrace));
     // --8<-- [end:inspect-tree]
 
     // --8<-- [start:unparse-node]
-    let contract_source = Rc::clone(contract).unparse();
+    let contract_source = contract.clone().unparse();
     assert_eq!(contract_source, "contract Foo {}");
     // --8<-- [end:unparse-node]
 

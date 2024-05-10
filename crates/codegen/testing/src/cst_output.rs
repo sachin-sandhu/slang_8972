@@ -1,10 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Write;
 use std::path::Path;
 
 use anyhow::{bail, Result};
 use codegen_language_definition::model::Language;
-use inflector::Inflector;
 use infra_utils::codegen::{Codegen, CodegenReadWrite};
 use infra_utils::paths::{FileWalker, PathExtensions};
 
@@ -29,7 +27,7 @@ pub fn generate_cst_output_tests(
             &mut codegen,
             parser_name,
             test_names,
-            &output_dir.join(format!("{0}.rs", parser_name.to_snake_case())),
+            &output_dir.join(format!("{parser_name}.rs")),
         )?;
     }
 
@@ -60,11 +58,8 @@ fn collect_parser_tests(data_dir: &Path) -> Result<BTreeMap<String, BTreeSet<Str
             [parser_name, test_name, "input.sol"] => {
                 parser_tests
                     .entry(parser_name.to_owned())
-                    .or_default()
+                    .or_insert_with(BTreeSet::new)
                     .insert(test_name.to_owned());
-            }
-            [.., ".gitattributes"] => {
-                /* Some tests depend on having CRLF being explicitly specified as EOL */
             }
             _ => {
                 bail!("Invalid test input. Should be in the form of '<tests-dir>/PARSER_NAME/TEST_NAME/input.sol', but found: {file:?}");
@@ -81,32 +76,27 @@ fn generate_mod_file(
     mod_file_path: &Path,
     parser_tests: &BTreeMap<String, BTreeSet<String>>,
 ) -> Result<()> {
-    let module_declarations_str =
-        parser_tests
-            .keys()
-            .fold(String::new(), |mut buffer, parser_name| {
-                writeln!(buffer, "mod {0};", parser_name.to_snake_case()).unwrap();
-                buffer
-            });
+    let module_declarations = parser_tests
+        .keys()
+        .map(|parser_name| format!("#[allow(non_snake_case)] mod {parser_name};"))
+        .collect::<String>();
 
     let version_breaks = language.collect_breaking_versions();
     let version_breaks_len = version_breaks.len();
     let version_breaks_str = version_breaks
         .iter()
-        .fold(String::new(), |mut buffer, version| {
-            writeln!(
-                buffer,
+        .map(|version| {
+            format!(
                 "Version::new({}, {}, {}),",
                 version.major, version.minor, version.patch
             )
-            .unwrap();
-            buffer
-        });
+        })
+        .collect::<String>();
 
     let contents = format!(
         "
             use semver::Version;
-            {module_declarations_str}
+            {module_declarations}
 
             pub const VERSION_BREAKS: [Version; {version_breaks_len}] = [
                 {version_breaks_str}
@@ -123,21 +113,19 @@ fn generate_unit_test_file(
     test_names: &BTreeSet<String>,
     unit_test_file_path: &Path,
 ) -> Result<()> {
-    let unit_tests_str = test_names
+    let unit_tests = test_names
         .iter()
-        .fold(String::new(), |mut buffer, test_name| {
-            writeln!(
-                buffer,
-                r#"
+        .map(|test_name| {
+            format!(
+                "
                     #[test]
                     fn {test_name}() -> Result<()> {{
-                        run("{parser_name}", "{test_name}")
+                        run(\"{parser_name}\", \"{test_name}\")
                     }}
-                "#
+                "
             )
-            .unwrap();
-            buffer
-        });
+        })
+        .collect::<String>();
 
     let contents = format!(
         "
@@ -145,7 +133,7 @@ fn generate_unit_test_file(
 
             use crate::cst_output::runner::run;
 
-            {unit_tests_str}
+            {unit_tests}
         "
     );
 

@@ -2,8 +2,8 @@
 
 use std::rc::Rc;
 
-use crate::cst::{LabeledNode, Node, RuleNode};
-use crate::kinds::{NodeLabel, RuleKind, TokenKind};
+use crate::cst::{NamedNode, Node, RuleNode};
+use crate::kinds::{FieldName, RuleKind, TokenKind};
 use crate::text_index::{TextIndex, TextRange};
 
 /// A node in the ancestor path of a [`Cursor`].
@@ -39,7 +39,7 @@ impl Cursor {
         if let Node::Rule(rule_node) = &self.node {
             Some(Rc::new(PathAncestor {
                 parent: self.parent.clone(),
-                rule_node: Rc::clone(rule_node),
+                rule_node: rule_node.clone(),
                 child_number: self.child_number,
                 text_offset: self.text_offset,
             }))
@@ -50,7 +50,7 @@ impl Cursor {
 
     fn set_from_ancestor_node(&mut self, ancestor: &Rc<PathAncestor>) {
         self.parent = ancestor.parent.clone();
-        self.node = Node::Rule(Rc::clone(&ancestor.rule_node));
+        self.node = Node::Rule(ancestor.rule_node.clone());
         self.child_number = ancestor.child_number;
         self.text_offset = ancestor.text_offset;
     }
@@ -124,11 +124,11 @@ impl Cursor {
         self.node.clone()
     }
 
-    pub fn label(&self) -> Option<NodeLabel> {
+    pub fn node_name(&self) -> Option<FieldName> {
         self.parent.as_ref().and_then(|parent| {
             let this = &parent.rule_node.children[self.child_number];
 
-            this.label
+            this.name
         })
     }
 
@@ -170,7 +170,7 @@ impl Cursor {
             fn next(&mut self) -> Option<Self::Item> {
                 if let Some(a) = self.a.take() {
                     self.a = a.parent.clone();
-                    Some(Rc::clone(&a.rule_node))
+                    Some(a.rule_node.clone())
                 } else {
                     None
                 }
@@ -301,7 +301,7 @@ impl Cursor {
                 self.node = new_child.node;
                 self.child_number = child_number;
                 // Sum up the length of the children before this child
-                // TODO(#871): it might sometimes be quicker to start from the end (like `go_to_last_child`)
+                // TODO: it might sometimes be quicker to start from the end (like `go_to_last_child`)
                 self.text_offset += new_parent.rule_node.children[..child_number]
                     .iter()
                     .map(|node| node.text_len())
@@ -413,28 +413,28 @@ impl Cursor {
     }
 }
 
-/// A [`Cursor`] that also keeps track of the labels of the nodes it visits.
-pub struct CursorWithLabels {
+/// A [`Cursor`] that also keeps track of the names of the nodes it visits.
+pub struct CursorWithNames {
     cursor: Cursor,
 }
 
-impl CursorWithLabels {
-    pub fn without_labels(self) -> Cursor {
+impl CursorWithNames {
+    pub fn without_names(self) -> Cursor {
         self.cursor
     }
 }
 
-impl Iterator for CursorWithLabels {
-    type Item = LabeledNode;
+impl Iterator for CursorWithNames {
+    type Item = NamedNode;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let label = self.cursor.label();
+        let name = self.cursor.node_name();
 
-        self.cursor.next().map(|node| LabeledNode { label, node })
+        self.cursor.next().map(|node| NamedNode { name, node })
     }
 }
 
-impl std::ops::Deref for CursorWithLabels {
+impl std::ops::Deref for CursorWithNames {
     type Target = Cursor;
 
     fn deref(&self) -> &Self::Target {
@@ -442,21 +442,21 @@ impl std::ops::Deref for CursorWithLabels {
     }
 }
 
-impl std::ops::DerefMut for CursorWithLabels {
+impl std::ops::DerefMut for CursorWithNames {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.cursor
     }
 }
 
 impl Cursor {
-    /// Returns a [`CursorWithLabels`] that wraps this cursor.
-    pub fn with_labels(self) -> CursorWithLabels {
-        CursorWithLabels::from(self)
+    /// Returns a [`CursorWithNames`] that wraps this cursor.
+    pub fn with_names(self) -> CursorWithNames {
+        CursorWithNames::from(self)
     }
 }
 
-impl From<Cursor> for CursorWithLabels {
+impl From<Cursor> for CursorWithNames {
     fn from(cursor: Cursor) -> Self {
-        CursorWithLabels { cursor }
+        CursorWithNames { cursor }
     }
 }

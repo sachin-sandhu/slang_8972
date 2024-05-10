@@ -4,7 +4,6 @@ use anyhow::{bail, Context, Result};
 use infra_utils::commands::Command;
 use infra_utils::paths::PathExtensions;
 
-use crate::toolchains::napi::glibc;
 use crate::toolchains::napi::resolver::NapiResolver;
 
 pub enum BuildTarget {
@@ -22,14 +21,10 @@ pub struct NapiCliOutput {
 pub struct NapiCli;
 
 impl NapiCli {
-    pub fn build(
-        resolver: &NapiResolver,
-        output_dir: impl AsRef<Path>,
-        target: &BuildTarget,
-    ) -> Result<NapiCliOutput> {
+    pub fn build(output_dir: impl AsRef<Path>, target: &BuildTarget) -> Result<NapiCliOutput> {
         let output_dir = output_dir.as_ref();
-        let package_dir = resolver.main_package_dir();
-        let crate_dir = resolver.crate_dir();
+        let package_dir = NapiResolver::main_package_dir();
+        let crate_dir = NapiResolver::crate_dir();
 
         let mut command = Command::new("napi");
 
@@ -61,8 +56,6 @@ impl NapiCli {
         };
 
         command.run()?;
-
-        glibc::ensure_correct_glibc_for_vscode(resolver, output_dir, target)?;
 
         let mut source_files = vec![];
         let mut node_binary = None;
@@ -100,9 +93,9 @@ impl NapiCli {
         })
     }
 
-    pub fn prepublish(resolver: &NapiResolver) -> Result<()> {
-        let package_dir = resolver.main_package_dir();
-        let platforms_dir = resolver.platforms_dir();
+    pub fn prepublish() -> Result<()> {
+        let package_dir = NapiResolver::main_package_dir();
+        let platforms_dir = NapiResolver::platforms_dir();
 
         // Note: NAPI expects all arguments to be relative to the current directory.
         let package_dir = package_dir.strip_repo_root()?;

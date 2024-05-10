@@ -3,23 +3,23 @@ use std::rc::Rc;
 use serde::Serialize;
 
 use crate::cursor::Cursor;
-use crate::kinds::{NodeLabel, RuleKind, TokenKind};
+use crate::kinds::{FieldName, RuleKind, TokenKind};
 use crate::text_index::TextIndex;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct LabeledNode {
-    pub label: Option<NodeLabel>,
+pub struct NamedNode {
+    pub name: Option<FieldName>,
     pub node: Node,
 }
 
-impl LabeledNode {
-    /// Creates an anonymous node (without a label).
+impl NamedNode {
+    /// Creates an anonymous (nameless) node.
     pub fn anonymous(node: Node) -> Self {
-        Self { label: None, node }
+        Self { name: None, node }
     }
 }
 
-impl std::ops::Deref for LabeledNode {
+impl std::ops::Deref for NamedNode {
     type Target = Node;
 
     fn deref(&self) -> &Self::Target {
@@ -32,7 +32,7 @@ pub struct RuleNode {
     pub kind: RuleKind,
     pub text_len: TextIndex,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<LabeledNode>,
+    pub children: Vec<NamedNode>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -48,7 +48,7 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn rule(kind: RuleKind, children: Vec<LabeledNode>) -> Self {
+    pub fn rule(kind: RuleKind, children: Vec<NamedNode>) -> Self {
         let text_len = children.iter().map(|node| node.text_len()).sum();
 
         Self::Rule(Rc::new(RuleNode {
@@ -70,7 +70,7 @@ impl Node {
     }
 
     /// Returns a slice of the children (not all descendants) of this node.
-    pub fn children(&self) -> &[LabeledNode] {
+    pub fn children(&self) -> &[NamedNode] {
         match self {
             Self::Rule(node) => &node.children,
             Self::Token(_) => &[],
@@ -156,13 +156,6 @@ impl Node {
 
     pub fn as_token_with_kinds(&self, kinds: &[TokenKind]) -> Option<&Rc<TokenNode>> {
         self.as_token().filter(|token| kinds.contains(&token.kind))
-    }
-
-    pub fn is_trivia(&self) -> bool {
-        match self {
-            Self::Rule(_) => false,
-            Self::Token(token) => token.kind.is_trivia(),
-        }
     }
 }
 

@@ -3,7 +3,7 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use codegen_language_definition::model::Language;
 use indicatif::{ProgressBar, ProgressStyle};
 use infra_utils::cargo::CargoWorkspace;
@@ -14,7 +14,7 @@ use semver::Version;
 use serde::Deserialize;
 use url::Url;
 
-use crate::utils::{CliInput, CliOutput};
+use crate::utils::{ApiInput, ApiOutput};
 
 #[derive(Debug)]
 pub struct Binary {
@@ -59,23 +59,22 @@ impl Binary {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        progress_bar.finish_and_clear();
+        progress_bar.finish();
         println!();
 
-        binaries.sort_by_key(|binary| binary.version.clone());
+        binaries.sort_by_key(|binary| binary.version.to_owned());
 
         Ok(binaries)
     }
 
-    pub fn run(&self, input: &CliInput) -> Result<CliOutput> {
+    pub fn run(&self, input: &ApiInput) -> Result<ApiOutput> {
         let input = serde_json::to_string(input)?;
 
         let output = Command::new(self.local_path.unwrap_str())
             .flag("--standard-json")
             .evaluate_with_input(input)?;
 
-        serde_json::from_str(&output)
-            .with_context(|| format!("Failed to parse solc JSON output:\n{output}"))
+        Ok(serde_json::from_str(&output)?)
     }
 }
 

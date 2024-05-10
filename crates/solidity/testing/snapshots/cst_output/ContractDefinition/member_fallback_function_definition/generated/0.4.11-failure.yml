@@ -8,7 +8,7 @@ Source: >
 
 Errors: # 1 total
   - >
-    Error: Expected ConstantKeyword or Identifier or InternalKeyword or PrivateKeyword or PublicKeyword.
+    Error: Expected ConstantKeyword or Identifier or InternalKeyword or OverrideKeyword or PrivateKeyword or PublicKeyword.
        ╭─[crates/solidity/testing/snapshots/cst_output/ContractDefinition/member_fallback_function_definition/input.sol:2:11]
        │
      2 │ ╭─▶   fallback() {
@@ -20,16 +20,14 @@ Errors: # 1 total
 Tree:
   - (ContractDefinition): # "contract Sample {\n  fallback() {\n  }\n}" (0..38)
       - (contract_keyword꞉ ContractKeyword): "contract" # (0..8)
-      - (leading_trivia꞉ Whitespace): " " # (8..9)
+      - (LeadingTrivia) ► (Whitespace): " " # (8..9)
       - (name꞉ Identifier): "Sample" # (9..15)
-      - (leading_trivia꞉ Whitespace): " " # (15..16)
+      - (LeadingTrivia) ► (Whitespace): " " # (15..16)
       - (open_brace꞉ OpenBrace): "{" # (16..17)
-      - (trailing_trivia꞉ EndOfLine): "\n" # (17..18)
+      - (TrailingTrivia) ► (EndOfLine): "\n" # (17..18)
       - (members꞉ ContractMembers): # "  fallback" (18..28)
-          - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition): # "  fallback" (18..28)
-              - (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "  fallback" (18..28)
-                  - (leading_trivia꞉ Whitespace): "  " # (18..20)
-                  - (item꞉ Identifier): "fallback" # (20..28)
-              - (attributes꞉ StateVariableAttributes): [] # (28..28)
+          - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition) ► (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "  fallback" (18..28)
+              - (LeadingTrivia) ► (Whitespace): "  " # (18..20)
+              - (item꞉ Identifier): "fallback" # (20..28)
       - (SKIPPED): "() {\n  }\n" # (28..37)
       - (close_brace꞉ CloseBrace): "}" # (37..38)

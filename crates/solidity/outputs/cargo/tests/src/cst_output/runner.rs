@@ -6,10 +6,10 @@ use infra_utils::codegen::Codegen;
 use infra_utils::paths::PathExtensions;
 use slang_solidity::kinds::RuleKind;
 use slang_solidity::language::Language;
+use solidity_testing_utils::cst_snapshots::CstSnapshots;
 use strum_macros::Display;
 
 use crate::cst_output::generated::VERSION_BREAKS;
-use crate::cst_output::renderer::render;
 
 #[derive(Display)]
 #[strum(serialize_all = "kebab_case")]
@@ -52,7 +52,7 @@ pub fn run(parser_name: &str, test_name: &str) -> Result<()> {
             .map(|error| error.to_error_report(source_id, &source, /* with_color */ false))
             .collect();
 
-        let cursor = output.create_tree_cursor().with_labels();
+        let cursor = output.create_tree_cursor().with_names();
 
         let status = if output.is_valid() {
             TestStatus::Success
@@ -60,7 +60,7 @@ pub fn run(parser_name: &str, test_name: &str) -> Result<()> {
             TestStatus::Failure
         };
 
-        let snapshot = render(&source, &errors, cursor)?;
+        let snapshot = CstSnapshots::render(&source, &errors, cursor)?;
 
         let snapshot_path = test_dir
             .join("generated")

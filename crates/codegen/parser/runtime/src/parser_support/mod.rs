@@ -10,26 +10,16 @@ mod separated_helper;
 mod sequence_helper;
 
 #[macro_use]
-pub(crate) mod scanner_macros;
+pub mod scanner_macros;
 
-// These are used when copied to the product shipped crate:
-#[allow(unused_imports)]
-pub(crate) use choice_helper::ChoiceHelper;
-#[allow(unused_imports)]
-pub(crate) use context::ParserContext;
-#[allow(unused_imports)]
-pub(crate) use optional_helper::OptionalHelper;
-#[allow(unused_imports)]
-pub(crate) use parser_function::ParserFunction;
-#[allow(unused_imports)]
-pub(crate) use parser_result::ParserResult;
-#[allow(unused_imports)]
-pub(crate) use precedence_helper::PrecedenceHelper;
-#[allow(unused_imports)]
-pub(crate) use recovery::TokenAcceptanceThreshold;
-#[allow(unused_imports)]
-pub(crate) use repetition_helper::{OneOrMoreHelper, ZeroOrMoreHelper};
-#[allow(unused_imports)]
-pub(crate) use separated_helper::SeparatedHelper;
-#[allow(unused_imports)]
-pub(crate) use sequence_helper::SequenceHelper;
+pub use choice_helper::ChoiceHelper;
+pub use context::ParserContext;
+pub use optional_helper::OptionalHelper;
+pub use parser_function::ParserFunction;
+pub use parser_result::ParserResult;
+pub use precedence_helper::PrecedenceHelper;
+#[allow(unused_imports)] // Used when copied to shipped crate
+pub(crate) use recovery::RecoverFromNoMatch;
+pub use repetition_helper::{OneOrMoreHelper, ZeroOrMoreHelper};
+pub use separated_helper::SeparatedHelper;
+pub use sequence_helper::SequenceHelper;

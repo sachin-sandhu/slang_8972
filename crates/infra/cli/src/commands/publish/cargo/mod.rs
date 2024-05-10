@@ -9,11 +9,9 @@ use infra_utils::github::GitHub;
 use infra_utils::paths::PathExtensions;
 use itertools::Itertools;
 
-use crate::commands::publish::DryRun;
-
 const USER_FACING_CRATE: &str = "slang_solidity";
 
-pub fn publish_cargo(dry_run: DryRun) -> Result<()> {
+pub fn publish_cargo() -> Result<()> {
     let local_version = CargoWorkspace::local_version()?;
     println!("Local version: {local_version}");
 
@@ -51,7 +49,7 @@ pub fn publish_cargo(dry_run: DryRun) -> Result<()> {
 
     changeset.commit_changes()?;
 
-    run_cargo_publish(dry_run)?;
+    run_cargo_publish()?;
 
     changeset.revert_changes()?;
 
@@ -79,16 +77,14 @@ fn update_cargo_lock() -> Result<()> {
         .run()
 }
 
-fn run_cargo_publish(dry_run: DryRun) -> Result<()> {
+fn run_cargo_publish() -> Result<()> {
     let mut command = Command::new("cargo")
         .arg("publish")
         .property("--package", USER_FACING_CRATE)
         .flag("--all-features");
 
-    if dry_run.is_yes() || !GitHub::is_running_in_ci() {
-        println!(
-            "Attempting a dry run, since we are not running in CI or a dry run was requested."
-        );
+    if !GitHub::is_running_in_ci() {
+        println!("Attempting a dry run, since we are not running in CI.");
         command = command.flag("--dry-run");
     }
 

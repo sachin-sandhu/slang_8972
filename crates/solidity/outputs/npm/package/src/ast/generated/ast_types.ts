@@ -14,7 +14,7 @@ export class SourceUnit {
     const [$members] = ast_internal.selectSequence(this.cst);
 
     return {
-      members: new SourceUnitMembers($members as RuleNode),
+      members: $members === null ? undefined : new SourceUnitMembers($members as RuleNode),
     };
   });
 
@@ -22,7 +22,7 @@ export class SourceUnit {
     assertKind(this.cst.kind, RuleKind.SourceUnit);
   }
 
-  public get members(): SourceUnitMembers {
+  public get members(): SourceUnitMembers | undefined {
     return this.fetch().members;
   }
 }
@@ -103,11 +103,11 @@ export class ExperimentalPragma {
 
 export class VersionPragma {
   private readonly fetch = once(() => {
-    const [$solidityKeyword, $sets] = ast_internal.selectSequence(this.cst);
+    const [$solidityKeyword, $expressions] = ast_internal.selectSequence(this.cst);
 
     return {
       solidityKeyword: $solidityKeyword as TokenNode,
-      sets: new VersionExpressionSets($sets as RuleNode),
+      expressions: new VersionPragmaExpressions($expressions as RuleNode),
     };
   });
 
@@ -119,27 +119,27 @@ export class VersionPragma {
     return this.fetch().solidityKeyword;
   }
 
-  public get sets(): VersionExpressionSets {
-    return this.fetch().sets;
+  public get expressions(): VersionPragmaExpressions {
+    return this.fetch().expressions;
   }
 }
 
-export class VersionRange {
+export class VersionPragmaOrExpression {
   private readonly fetch = once(() => {
     const [$leftOperand, $operator, $rightOperand] = ast_internal.selectSequence(this.cst);
 
     return {
-      leftOperand: new VersionExpression($leftOperand as RuleNode),
+      leftOperand: new VersionPragmaExpression($leftOperand as RuleNode),
       operator: $operator as TokenNode,
-      rightOperand: new VersionExpression($rightOperand as RuleNode),
+      rightOperand: new VersionPragmaExpression($rightOperand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionRange);
+    assertKind(this.cst.kind, RuleKind.VersionPragmaOrExpression);
   }
 
-  public get leftOperand(): VersionExpression {
+  public get leftOperand(): VersionPragmaExpression {
     return this.fetch().leftOperand;
   }
 
@@ -147,31 +147,59 @@ export class VersionRange {
     return this.fetch().operator;
   }
 
-  public get rightOperand(): VersionExpression {
+  public get rightOperand(): VersionPragmaExpression {
     return this.fetch().rightOperand;
   }
 }
 
-export class VersionComparator {
+export class VersionPragmaRangeExpression {
   private readonly fetch = once(() => {
-    const [$operator, $operand] = ast_internal.selectSequence(this.cst);
+    const [$leftOperand, $operator, $rightOperand] = ast_internal.selectSequence(this.cst);
 
     return {
+      leftOperand: new VersionPragmaExpression($leftOperand as RuleNode),
       operator: $operator as TokenNode,
-      operand: new VersionExpression($operand as RuleNode),
+      rightOperand: new VersionPragmaExpression($rightOperand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionComparator);
+    assertKind(this.cst.kind, RuleKind.VersionPragmaRangeExpression);
+  }
+
+  public get leftOperand(): VersionPragmaExpression {
+    return this.fetch().leftOperand;
   }
 
   public get operator(): TokenNode {
     return this.fetch().operator;
   }
 
-  public get operand(): VersionExpression {
+  public get rightOperand(): VersionPragmaExpression {
+    return this.fetch().rightOperand;
+  }
+}
+
+export class VersionPragmaPrefixExpression {
+  private readonly fetch = once(() => {
+    const [$operand, $operator] = ast_internal.selectSequence(this.cst);
+
+    return {
+      operand: new VersionPragmaExpression($operand as RuleNode),
+      operator: $operator as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.VersionPragmaPrefixExpression);
+  }
+
+  public get operand(): VersionPragmaExpression {
     return this.fetch().operand;
+  }
+
+  public get operator(): TokenNode {
+    return this.fetch().operator;
   }
 }
 
@@ -208,7 +236,7 @@ export class PathImport {
     const [$path, $alias] = ast_internal.selectSequence(this.cst);
 
     return {
-      path: new StringLiteral($path as RuleNode),
+      path: $path as TokenNode,
       alias: $alias === null ? undefined : new ImportAlias($alias as RuleNode),
     };
   });
@@ -217,7 +245,7 @@ export class PathImport {
     assertKind(this.cst.kind, RuleKind.PathImport);
   }
 
-  public get path(): StringLiteral {
+  public get path(): TokenNode {
     return this.fetch().path;
   }
 
@@ -234,7 +262,7 @@ export class NamedImport {
       asterisk: $asterisk as TokenNode,
       alias: new ImportAlias($alias as RuleNode),
       fromKeyword: $fromKeyword as TokenNode,
-      path: new StringLiteral($path as RuleNode),
+      path: $path as TokenNode,
     };
   });
 
@@ -254,7 +282,7 @@ export class NamedImport {
     return this.fetch().fromKeyword;
   }
 
-  public get path(): StringLiteral {
+  public get path(): TokenNode {
     return this.fetch().path;
   }
 }
@@ -268,7 +296,7 @@ export class ImportDeconstruction {
       symbols: new ImportDeconstructionSymbols($symbols as RuleNode),
       closeBrace: $closeBrace as TokenNode,
       fromKeyword: $fromKeyword as TokenNode,
-      path: new StringLiteral($path as RuleNode),
+      path: $path as TokenNode,
     };
   });
 
@@ -292,7 +320,7 @@ export class ImportDeconstruction {
     return this.fetch().fromKeyword;
   }
 
-  public get path(): StringLiteral {
+  public get path(): TokenNode {
     return this.fetch().path;
   }
 }
@@ -473,7 +501,7 @@ export class ContractDefinition {
       name: $name as TokenNode,
       inheritence: $inheritence === null ? undefined : new InheritanceSpecifier($inheritence as RuleNode),
       openBrace: $openBrace as TokenNode,
-      members: new ContractMembers($members as RuleNode),
+      members: $members === null ? undefined : new ContractMembers($members as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -502,7 +530,7 @@ export class ContractDefinition {
     return this.fetch().openBrace;
   }
 
-  public get members(): ContractMembers {
+  public get members(): ContractMembers | undefined {
     return this.fetch().members;
   }
 
@@ -568,7 +596,7 @@ export class InterfaceDefinition {
       name: $name as TokenNode,
       inheritence: $inheritence === null ? undefined : new InheritanceSpecifier($inheritence as RuleNode),
       openBrace: $openBrace as TokenNode,
-      members: new InterfaceMembers($members as RuleNode),
+      members: $members === null ? undefined : new InterfaceMembers($members as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -593,7 +621,7 @@ export class InterfaceDefinition {
     return this.fetch().openBrace;
   }
 
-  public get members(): InterfaceMembers {
+  public get members(): InterfaceMembers | undefined {
     return this.fetch().members;
   }
 
@@ -610,7 +638,7 @@ export class LibraryDefinition {
       libraryKeyword: $libraryKeyword as TokenNode,
       name: $name as TokenNode,
       openBrace: $openBrace as TokenNode,
-      members: new LibraryMembers($members as RuleNode),
+      members: $members === null ? undefined : new LibraryMembers($members as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -631,7 +659,7 @@ export class LibraryDefinition {
     return this.fetch().openBrace;
   }
 
-  public get members(): LibraryMembers {
+  public get members(): LibraryMembers | undefined {
     return this.fetch().members;
   }
 
@@ -648,7 +676,7 @@ export class StructDefinition {
       structKeyword: $structKeyword as TokenNode,
       name: $name as TokenNode,
       openBrace: $openBrace as TokenNode,
-      members: new StructMembers($members as RuleNode),
+      members: $members === null ? undefined : new StructMembers($members as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -669,7 +697,7 @@ export class StructDefinition {
     return this.fetch().openBrace;
   }
 
-  public get members(): StructMembers {
+  public get members(): StructMembers | undefined {
     return this.fetch().members;
   }
 
@@ -714,7 +742,7 @@ export class EnumDefinition {
       enumKeyword: $enumKeyword as TokenNode,
       name: $name as TokenNode,
       openBrace: $openBrace as TokenNode,
-      members: new EnumMembers($members as RuleNode),
+      members: $members === null ? undefined : new EnumMembers($members as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -735,7 +763,7 @@ export class EnumDefinition {
     return this.fetch().openBrace;
   }
 
-  public get members(): EnumMembers {
+  public get members(): EnumMembers | undefined {
     return this.fetch().members;
   }
 
@@ -793,7 +821,7 @@ export class StateVariableDefinition {
 
     return {
       typeName: new TypeName($typeName as RuleNode),
-      attributes: new StateVariableAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new StateVariableAttributes($attributes as RuleNode),
       name: $name as TokenNode,
       value: $value === null ? undefined : new StateVariableDefinitionValue($value as RuleNode),
       semicolon: $semicolon as TokenNode,
@@ -808,7 +836,7 @@ export class StateVariableDefinition {
     return this.fetch().typeName;
   }
 
-  public get attributes(): StateVariableAttributes {
+  public get attributes(): StateVariableAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -856,7 +884,7 @@ export class FunctionDefinition {
       functionKeyword: $functionKeyword as TokenNode,
       name: new FunctionName($name as RuleNode),
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new FunctionAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new FunctionAttributes($attributes as RuleNode),
       returns: $returns === null ? undefined : new ReturnsDeclaration($returns as RuleNode),
       body: new FunctionBody($body as RuleNode),
     };
@@ -878,7 +906,7 @@ export class FunctionDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): FunctionAttributes {
+  public get attributes(): FunctionAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -897,7 +925,7 @@ export class ParametersDeclaration {
 
     return {
       openParen: $openParen as TokenNode,
-      parameters: new Parameters($parameters as RuleNode),
+      parameters: $parameters === null ? undefined : new Parameters($parameters as RuleNode),
       closeParen: $closeParen as TokenNode,
     };
   });
@@ -910,7 +938,7 @@ export class ParametersDeclaration {
     return this.fetch().openParen;
   }
 
-  public get parameters(): Parameters {
+  public get parameters(): Parameters | undefined {
     return this.fetch().parameters;
   }
 
@@ -1028,7 +1056,7 @@ export class ConstructorDefinition {
     return {
       constructorKeyword: $constructorKeyword as TokenNode,
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new ConstructorAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new ConstructorAttributes($attributes as RuleNode),
       body: new Block($body as RuleNode),
     };
   });
@@ -1045,7 +1073,7 @@ export class ConstructorDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): ConstructorAttributes {
+  public get attributes(): ConstructorAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1061,7 +1089,7 @@ export class UnnamedFunctionDefinition {
     return {
       functionKeyword: $functionKeyword as TokenNode,
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new UnnamedFunctionAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new UnnamedFunctionAttributes($attributes as RuleNode),
       body: new FunctionBody($body as RuleNode),
     };
   });
@@ -1078,7 +1106,7 @@ export class UnnamedFunctionDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): UnnamedFunctionAttributes {
+  public get attributes(): UnnamedFunctionAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1094,7 +1122,7 @@ export class FallbackFunctionDefinition {
     return {
       fallbackKeyword: $fallbackKeyword as TokenNode,
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new FallbackFunctionAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new FallbackFunctionAttributes($attributes as RuleNode),
       returns: $returns === null ? undefined : new ReturnsDeclaration($returns as RuleNode),
       body: new FunctionBody($body as RuleNode),
     };
@@ -1112,7 +1140,7 @@ export class FallbackFunctionDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): FallbackFunctionAttributes {
+  public get attributes(): FallbackFunctionAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1132,7 +1160,7 @@ export class ReceiveFunctionDefinition {
     return {
       receiveKeyword: $receiveKeyword as TokenNode,
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new ReceiveFunctionAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new ReceiveFunctionAttributes($attributes as RuleNode),
       body: new FunctionBody($body as RuleNode),
     };
   });
@@ -1149,7 +1177,7 @@ export class ReceiveFunctionDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): ReceiveFunctionAttributes {
+  public get attributes(): ReceiveFunctionAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1166,7 +1194,7 @@ export class ModifierDefinition {
       modifierKeyword: $modifierKeyword as TokenNode,
       name: $name as TokenNode,
       parameters: $parameters === null ? undefined : new ParametersDeclaration($parameters as RuleNode),
-      attributes: new ModifierAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new ModifierAttributes($attributes as RuleNode),
       body: new FunctionBody($body as RuleNode),
     };
   });
@@ -1187,7 +1215,7 @@ export class ModifierDefinition {
     return this.fetch().parameters;
   }
 
-  public get attributes(): ModifierAttributes {
+  public get attributes(): ModifierAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1263,7 +1291,7 @@ export class EventParametersDeclaration {
 
     return {
       openParen: $openParen as TokenNode,
-      parameters: new EventParameters($parameters as RuleNode),
+      parameters: $parameters === null ? undefined : new EventParameters($parameters as RuleNode),
       closeParen: $closeParen as TokenNode,
     };
   });
@@ -1276,7 +1304,7 @@ export class EventParametersDeclaration {
     return this.fetch().openParen;
   }
 
-  public get parameters(): EventParameters {
+  public get parameters(): EventParameters | undefined {
     return this.fetch().parameters;
   }
 
@@ -1390,7 +1418,7 @@ export class ErrorParametersDeclaration {
 
     return {
       openParen: $openParen as TokenNode,
-      parameters: new ErrorParameters($parameters as RuleNode),
+      parameters: $parameters === null ? undefined : new ErrorParameters($parameters as RuleNode),
       closeParen: $closeParen as TokenNode,
     };
   });
@@ -1403,7 +1431,7 @@ export class ErrorParametersDeclaration {
     return this.fetch().openParen;
   }
 
-  public get parameters(): ErrorParameters {
+  public get parameters(): ErrorParameters | undefined {
     return this.fetch().parameters;
   }
 
@@ -1437,22 +1465,18 @@ export class ErrorParameter {
 
 export class ArrayTypeName {
   private readonly fetch = once(() => {
-    const [$operand, $openBracket, $index, $closeBracket] = ast_internal.selectSequence(this.cst);
+    const [$openBracket, $index, $closeBracket, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
-      operand: new TypeName($operand as RuleNode),
       openBracket: $openBracket as TokenNode,
       index: $index === null ? undefined : new Expression($index as RuleNode),
       closeBracket: $closeBracket as TokenNode,
+      operand: new TypeName($operand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.ArrayTypeName);
-  }
-
-  public get operand(): TypeName {
-    return this.fetch().operand;
   }
 
   public get openBracket(): TokenNode {
@@ -1466,6 +1490,10 @@ export class ArrayTypeName {
   public get closeBracket(): TokenNode {
     return this.fetch().closeBracket;
   }
+
+  public get operand(): TypeName {
+    return this.fetch().operand;
+  }
 }
 
 export class FunctionType {
@@ -1475,7 +1503,7 @@ export class FunctionType {
     return {
       functionKeyword: $functionKeyword as TokenNode,
       parameters: new ParametersDeclaration($parameters as RuleNode),
-      attributes: new FunctionTypeAttributes($attributes as RuleNode),
+      attributes: $attributes === null ? undefined : new FunctionTypeAttributes($attributes as RuleNode),
       returns: $returns === null ? undefined : new ReturnsDeclaration($returns as RuleNode),
     };
   });
@@ -1492,7 +1520,7 @@ export class FunctionType {
     return this.fetch().parameters;
   }
 
-  public get attributes(): FunctionTypeAttributes {
+  public get attributes(): FunctionTypeAttributes | undefined {
     return this.fetch().attributes;
   }
 
@@ -1620,7 +1648,7 @@ export class Block {
 
     return {
       openBrace: $openBrace as TokenNode,
-      statements: new Statements($statements as RuleNode),
+      statements: $statements === null ? undefined : new Statements($statements as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -1633,7 +1661,7 @@ export class Block {
     return this.fetch().openBrace;
   }
 
-  public get statements(): Statements {
+  public get statements(): Statements | undefined {
     return this.fetch().statements;
   }
 
@@ -1694,7 +1722,7 @@ export class AssemblyStatement {
 
     return {
       assemblyKeyword: $assemblyKeyword as TokenNode,
-      label: $label === null ? undefined : new StringLiteral($label as RuleNode),
+      label: $label === null ? undefined : ($label as TokenNode),
       flags: $flags === null ? undefined : new AssemblyFlagsDeclaration($flags as RuleNode),
       body: new YulBlock($body as RuleNode),
     };
@@ -1708,7 +1736,7 @@ export class AssemblyStatement {
     return this.fetch().assemblyKeyword;
   }
 
-  public get label(): StringLiteral | undefined {
+  public get label(): TokenNode | undefined {
     return this.fetch().label;
   }
 
@@ -1751,11 +1779,9 @@ export class AssemblyFlagsDeclaration {
 
 export class TupleDeconstructionStatement {
   private readonly fetch = once(() => {
-    const [$varKeyword, $openParen, $elements, $closeParen, $equal, $expression, $semicolon] =
-      ast_internal.selectSequence(this.cst);
+    const [$openParen, $elements, $closeParen, $equal, $expression, $semicolon] = ast_internal.selectSequence(this.cst);
 
     return {
-      varKeyword: $varKeyword === null ? undefined : ($varKeyword as TokenNode),
       openParen: $openParen as TokenNode,
       elements: new TupleDeconstructionElements($elements as RuleNode),
       closeParen: $closeParen as TokenNode,
@@ -1767,10 +1793,6 @@ export class TupleDeconstructionStatement {
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.TupleDeconstructionStatement);
-  }
-
-  public get varKeyword(): TokenNode | undefined {
-    return this.fetch().varKeyword;
   }
 
   public get openParen(): TokenNode {
@@ -2237,6 +2259,34 @@ export class EmitStatement {
   }
 }
 
+export class DeleteStatement {
+  private readonly fetch = once(() => {
+    const [$deleteKeyword, $expression, $semicolon] = ast_internal.selectSequence(this.cst);
+
+    return {
+      deleteKeyword: $deleteKeyword as TokenNode,
+      expression: new Expression($expression as RuleNode),
+      semicolon: $semicolon as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.DeleteStatement);
+  }
+
+  public get deleteKeyword(): TokenNode {
+    return this.fetch().deleteKeyword;
+  }
+
+  public get expression(): Expression {
+    return this.fetch().expression;
+  }
+
+  public get semicolon(): TokenNode {
+    return this.fetch().semicolon;
+  }
+}
+
 export class TryStatement {
   private readonly fetch = once(() => {
     const [$tryKeyword, $expression, $returns, $body, $catchClauses] = ast_internal.selectSequence(this.cst);
@@ -2412,23 +2462,19 @@ export class AssignmentExpression {
 
 export class ConditionalExpression {
   private readonly fetch = once(() => {
-    const [$operand, $questionMark, $trueExpression, $colon, $falseExpression] = ast_internal.selectSequence(this.cst);
+    const [$questionMark, $trueExpression, $colon, $falseExpression, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
-      operand: new Expression($operand as RuleNode),
       questionMark: $questionMark as TokenNode,
       trueExpression: new Expression($trueExpression as RuleNode),
       colon: $colon as TokenNode,
       falseExpression: new Expression($falseExpression as RuleNode),
+      operand: new Expression($operand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.ConditionalExpression);
-  }
-
-  public get operand(): Expression {
-    return this.fetch().operand;
   }
 
   public get questionMark(): TokenNode {
@@ -2445,6 +2491,10 @@ export class ConditionalExpression {
 
   public get falseExpression(): Expression {
     return this.fetch().falseExpression;
+  }
+
+  public get operand(): Expression {
+    return this.fetch().operand;
   }
 }
 
@@ -2758,29 +2808,6 @@ export class ExponentiationExpression {
 
 export class PostfixExpression {
   private readonly fetch = once(() => {
-    const [$operand, $operator] = ast_internal.selectSequence(this.cst);
-
-    return {
-      operand: new Expression($operand as RuleNode),
-      operator: $operator as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.PostfixExpression);
-  }
-
-  public get operand(): Expression {
-    return this.fetch().operand;
-  }
-
-  public get operator(): TokenNode {
-    return this.fetch().operator;
-  }
-}
-
-export class PrefixExpression {
-  private readonly fetch = once(() => {
     const [$operator, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
@@ -2790,7 +2817,7 @@ export class PrefixExpression {
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.PrefixExpression);
+    assertKind(this.cst.kind, RuleKind.PostfixExpression);
   }
 
   public get operator(): TokenNode {
@@ -2802,13 +2829,37 @@ export class PrefixExpression {
   }
 }
 
-export class FunctionCallExpression {
+export class PrefixExpression {
   private readonly fetch = once(() => {
-    const [$operand, $arguments] = ast_internal.selectSequence(this.cst);
+    const [$operand, $operator] = ast_internal.selectSequence(this.cst);
 
     return {
       operand: new Expression($operand as RuleNode),
+      operator: $operator as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.PrefixExpression);
+  }
+
+  public get operand(): Expression {
+    return this.fetch().operand;
+  }
+
+  public get operator(): TokenNode {
+    return this.fetch().operator;
+  }
+}
+
+export class FunctionCallExpression {
+  private readonly fetch = once(() => {
+    const [$options, $arguments, $operand] = ast_internal.selectSequence(this.cst);
+
+    return {
+      options: $options === null ? undefined : new FunctionCallOptions($options as RuleNode),
       arguments: new ArgumentsDeclaration($arguments as RuleNode),
+      operand: new Expression($operand as RuleNode),
     };
   });
 
@@ -2816,65 +2867,32 @@ export class FunctionCallExpression {
     assertKind(this.cst.kind, RuleKind.FunctionCallExpression);
   }
 
-  public get operand(): Expression {
-    return this.fetch().operand;
+  public get options(): FunctionCallOptions | undefined {
+    return this.fetch().options;
   }
 
   public get arguments(): ArgumentsDeclaration {
     return this.fetch().arguments;
   }
-}
-
-export class CallOptionsExpression {
-  private readonly fetch = once(() => {
-    const [$operand, $openBrace, $options, $closeBrace] = ast_internal.selectSequence(this.cst);
-
-    return {
-      operand: new Expression($operand as RuleNode),
-      openBrace: $openBrace as TokenNode,
-      options: new CallOptions($options as RuleNode),
-      closeBrace: $closeBrace as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.CallOptionsExpression);
-  }
 
   public get operand(): Expression {
     return this.fetch().operand;
-  }
-
-  public get openBrace(): TokenNode {
-    return this.fetch().openBrace;
-  }
-
-  public get options(): CallOptions {
-    return this.fetch().options;
-  }
-
-  public get closeBrace(): TokenNode {
-    return this.fetch().closeBrace;
   }
 }
 
 export class MemberAccessExpression {
   private readonly fetch = once(() => {
-    const [$operand, $period, $member] = ast_internal.selectSequence(this.cst);
+    const [$period, $member, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
-      operand: new Expression($operand as RuleNode),
       period: $period as TokenNode,
       member: new MemberAccess($member as RuleNode),
+      operand: new Expression($operand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.MemberAccessExpression);
-  }
-
-  public get operand(): Expression {
-    return this.fetch().operand;
   }
 
   public get period(): TokenNode {
@@ -2884,27 +2902,27 @@ export class MemberAccessExpression {
   public get member(): MemberAccess {
     return this.fetch().member;
   }
+
+  public get operand(): Expression {
+    return this.fetch().operand;
+  }
 }
 
 export class IndexAccessExpression {
   private readonly fetch = once(() => {
-    const [$operand, $openBracket, $start, $end, $closeBracket] = ast_internal.selectSequence(this.cst);
+    const [$openBracket, $start, $end, $closeBracket, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
-      operand: new Expression($operand as RuleNode),
       openBracket: $openBracket as TokenNode,
       start: $start === null ? undefined : new Expression($start as RuleNode),
       end: $end === null ? undefined : new IndexAccessEnd($end as RuleNode),
       closeBracket: $closeBracket as TokenNode,
+      operand: new Expression($operand as RuleNode),
     };
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.IndexAccessExpression);
-  }
-
-  public get operand(): Expression {
-    return this.fetch().operand;
   }
 
   public get openBracket(): TokenNode {
@@ -2921,6 +2939,10 @@ export class IndexAccessExpression {
 
   public get closeBracket(): TokenNode {
     return this.fetch().closeBracket;
+  }
+
+  public get operand(): Expression {
+    return this.fetch().operand;
   }
 }
 
@@ -2953,7 +2975,7 @@ export class PositionalArgumentsDeclaration {
 
     return {
       openParen: $openParen as TokenNode,
-      arguments: new PositionalArguments($arguments as RuleNode),
+      arguments: $arguments === null ? undefined : new PositionalArguments($arguments as RuleNode),
       closeParen: $closeParen as TokenNode,
     };
   });
@@ -2966,7 +2988,7 @@ export class PositionalArgumentsDeclaration {
     return this.fetch().openParen;
   }
 
-  public get arguments(): PositionalArguments {
+  public get arguments(): PositionalArguments | undefined {
     return this.fetch().arguments;
   }
 
@@ -3009,7 +3031,7 @@ export class NamedArgumentGroup {
 
     return {
       openBrace: $openBrace as TokenNode,
-      arguments: new NamedArguments($arguments as RuleNode),
+      arguments: $arguments === null ? undefined : new NamedArguments($arguments as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -3022,7 +3044,7 @@ export class NamedArgumentGroup {
     return this.fetch().openBrace;
   }
 
-  public get arguments(): NamedArguments {
+  public get arguments(): NamedArguments | undefined {
     return this.fetch().arguments;
   }
 
@@ -3241,7 +3263,7 @@ export class YulBlock {
 
     return {
       openBrace: $openBrace as TokenNode,
-      statements: new YulStatements($statements as RuleNode),
+      statements: $statements === null ? undefined : new YulStatements($statements as RuleNode),
       closeBrace: $closeBrace as TokenNode,
     };
   });
@@ -3254,7 +3276,7 @@ export class YulBlock {
     return this.fetch().openBrace;
   }
 
-  public get statements(): YulStatements {
+  public get statements(): YulStatements | undefined {
     return this.fetch().statements;
   }
 
@@ -3307,7 +3329,7 @@ export class YulParametersDeclaration {
 
     return {
       openParen: $openParen as TokenNode,
-      parameters: new YulParameters($parameters as RuleNode),
+      parameters: $parameters === null ? undefined : new YulParameters($parameters as RuleNode),
       closeParen: $closeParen as TokenNode,
     };
   });
@@ -3320,7 +3342,7 @@ export class YulParametersDeclaration {
     return this.fetch().openParen;
   }
 
-  public get parameters(): YulParameters {
+  public get parameters(): YulParameters | undefined {
     return this.fetch().parameters;
   }
 
@@ -3358,7 +3380,7 @@ export class YulVariableDeclarationStatement {
 
     return {
       letKeyword: $letKeyword as TokenNode,
-      names: $names as TokenNode,
+      names: new YulIdentifierPaths($names as RuleNode),
       value: $value === null ? undefined : new YulVariableDeclarationValue($value as RuleNode),
     };
   });
@@ -3371,7 +3393,7 @@ export class YulVariableDeclarationStatement {
     return this.fetch().letKeyword;
   }
 
-  public get names(): TokenNode {
+  public get names(): YulIdentifierPaths {
     return this.fetch().names;
   }
 
@@ -3382,10 +3404,10 @@ export class YulVariableDeclarationStatement {
 
 export class YulVariableDeclarationValue {
   private readonly fetch = once(() => {
-    const [$assignment, $expression] = ast_internal.selectSequence(this.cst);
+    const [$colonEqual, $expression] = ast_internal.selectSequence(this.cst);
 
     return {
-      assignment: new YulAssignmentOperator($assignment as RuleNode),
+      colonEqual: $colonEqual as TokenNode,
       expression: new YulExpression($expression as RuleNode),
     };
   });
@@ -3394,8 +3416,8 @@ export class YulVariableDeclarationValue {
     assertKind(this.cst.kind, RuleKind.YulVariableDeclarationValue);
   }
 
-  public get assignment(): YulAssignmentOperator {
-    return this.fetch().assignment;
+  public get colonEqual(): TokenNode {
+    return this.fetch().colonEqual;
   }
 
   public get expression(): YulExpression {
@@ -3405,11 +3427,11 @@ export class YulVariableDeclarationValue {
 
 export class YulAssignmentStatement {
   private readonly fetch = once(() => {
-    const [$names, $assignment, $expression] = ast_internal.selectSequence(this.cst);
+    const [$names, $colonEqual, $expression] = ast_internal.selectSequence(this.cst);
 
     return {
-      names: new YulPaths($names as RuleNode),
-      assignment: new YulAssignmentOperator($assignment as RuleNode),
+      names: new YulIdentifierPaths($names as RuleNode),
+      colonEqual: $colonEqual as TokenNode,
       expression: new YulExpression($expression as RuleNode),
     };
   });
@@ -3418,39 +3440,16 @@ export class YulAssignmentStatement {
     assertKind(this.cst.kind, RuleKind.YulAssignmentStatement);
   }
 
-  public get names(): YulPaths {
+  public get names(): YulIdentifierPaths {
     return this.fetch().names;
   }
 
-  public get assignment(): YulAssignmentOperator {
-    return this.fetch().assignment;
+  public get colonEqual(): TokenNode {
+    return this.fetch().colonEqual;
   }
 
   public get expression(): YulExpression {
     return this.fetch().expression;
-  }
-}
-
-export class YulColonAndEqual {
-  private readonly fetch = once(() => {
-    const [$colon, $equal] = ast_internal.selectSequence(this.cst);
-
-    return {
-      colon: $colon as TokenNode,
-      equal: $equal as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulColonAndEqual);
-  }
-
-  public get colon(): TokenNode {
-    return this.fetch().colon;
-  }
-
-  public get equal(): TokenNode {
-    return this.fetch().equal;
   }
 }
 
@@ -3479,6 +3478,60 @@ export class YulIfStatement {
 
   public get body(): YulBlock {
     return this.fetch().body;
+  }
+}
+
+export class YulLeaveStatement {
+  private readonly fetch = once(() => {
+    const [$leaveKeyword] = ast_internal.selectSequence(this.cst);
+
+    return {
+      leaveKeyword: $leaveKeyword as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.YulLeaveStatement);
+  }
+
+  public get leaveKeyword(): TokenNode {
+    return this.fetch().leaveKeyword;
+  }
+}
+
+export class YulBreakStatement {
+  private readonly fetch = once(() => {
+    const [$breakKeyword] = ast_internal.selectSequence(this.cst);
+
+    return {
+      breakKeyword: $breakKeyword as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.YulBreakStatement);
+  }
+
+  public get breakKeyword(): TokenNode {
+    return this.fetch().breakKeyword;
+  }
+}
+
+export class YulContinueStatement {
+  private readonly fetch = once(() => {
+    const [$continueKeyword] = ast_internal.selectSequence(this.cst);
+
+    return {
+      continueKeyword: $continueKeyword as TokenNode,
+    };
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.YulContinueStatement);
+  }
+
+  public get continueKeyword(): TokenNode {
+    return this.fetch().continueKeyword;
   }
 }
 
@@ -3599,92 +3652,15 @@ export class YulValueCase {
   }
 }
 
-export class YulLeaveStatement {
-  private readonly fetch = once(() => {
-    const [$leaveKeyword] = ast_internal.selectSequence(this.cst);
-
-    return {
-      leaveKeyword: $leaveKeyword as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulLeaveStatement);
-  }
-
-  public get leaveKeyword(): TokenNode {
-    return this.fetch().leaveKeyword;
-  }
-}
-
-export class YulBreakStatement {
-  private readonly fetch = once(() => {
-    const [$breakKeyword] = ast_internal.selectSequence(this.cst);
-
-    return {
-      breakKeyword: $breakKeyword as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulBreakStatement);
-  }
-
-  public get breakKeyword(): TokenNode {
-    return this.fetch().breakKeyword;
-  }
-}
-
-export class YulContinueStatement {
-  private readonly fetch = once(() => {
-    const [$continueKeyword] = ast_internal.selectSequence(this.cst);
-
-    return {
-      continueKeyword: $continueKeyword as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulContinueStatement);
-  }
-
-  public get continueKeyword(): TokenNode {
-    return this.fetch().continueKeyword;
-  }
-}
-
-export class YulLabel {
-  private readonly fetch = once(() => {
-    const [$label, $colon] = ast_internal.selectSequence(this.cst);
-
-    return {
-      label: $label as TokenNode,
-      colon: $colon as TokenNode,
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulLabel);
-  }
-
-  public get label(): TokenNode {
-    return this.fetch().label;
-  }
-
-  public get colon(): TokenNode {
-    return this.fetch().colon;
-  }
-}
-
 export class YulFunctionCallExpression {
   private readonly fetch = once(() => {
-    const [$operand, $openParen, $arguments, $closeParen] = ast_internal.selectSequence(this.cst);
+    const [$openParen, $arguments, $closeParen, $operand] = ast_internal.selectSequence(this.cst);
 
     return {
-      operand: new YulExpression($operand as RuleNode),
       openParen: $openParen as TokenNode,
-      arguments: new YulArguments($arguments as RuleNode),
+      arguments: $arguments === null ? undefined : new YulArguments($arguments as RuleNode),
       closeParen: $closeParen as TokenNode,
+      operand: new YulExpression($operand as RuleNode),
     };
   });
 
@@ -3692,20 +3668,20 @@ export class YulFunctionCallExpression {
     assertKind(this.cst.kind, RuleKind.YulFunctionCallExpression);
   }
 
-  public get operand(): YulExpression {
-    return this.fetch().operand;
-  }
-
   public get openParen(): TokenNode {
     return this.fetch().openParen;
   }
 
-  public get arguments(): YulArguments {
+  public get arguments(): YulArguments | undefined {
     return this.fetch().arguments;
   }
 
   public get closeParen(): TokenNode {
     return this.fetch().closeParen;
+  }
+
+  public get operand(): YulExpression {
+    return this.fetch().operand;
   }
 }
 
@@ -3812,14 +3788,12 @@ export class Pragma {
 }
 
 export class ExperimentalFeature {
-  private readonly fetch: () => StringLiteral | TokenNode = once(() => {
+  private readonly fetch: () => TokenNode = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
     switch (variant.kind) {
-      case RuleKind.StringLiteral:
-        return new StringLiteral(variant as RuleNode);
-
       case TokenKind.Identifier:
+      case TokenKind.AsciiStringLiteral:
         return variant as TokenNode;
 
       default:
@@ -3831,26 +3805,28 @@ export class ExperimentalFeature {
     assertKind(this.cst.kind, RuleKind.ExperimentalFeature);
   }
 
-  public get variant(): StringLiteral | TokenNode {
+  public get variant(): TokenNode {
     return this.fetch();
   }
 }
 
-export class VersionExpression {
-  private readonly fetch: () => VersionRange | VersionComparator | VersionSpecifiers | TokenNode = once(() => {
+export class VersionPragmaExpression {
+  private readonly fetch: () =>
+    | VersionPragmaOrExpression
+    | VersionPragmaRangeExpression
+    | VersionPragmaPrefixExpression
+    | VersionPragmaSpecifier = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
     switch (variant.kind) {
-      case RuleKind.VersionRange:
-        return new VersionRange(variant as RuleNode);
-      case RuleKind.VersionComparator:
-        return new VersionComparator(variant as RuleNode);
-      case RuleKind.VersionSpecifiers:
-        return new VersionSpecifiers(variant as RuleNode);
-
-      case TokenKind.SingleQuotedVersionLiteral:
-      case TokenKind.DoubleQuotedVersionLiteral:
-        return variant as TokenNode;
+      case RuleKind.VersionPragmaOrExpression:
+        return new VersionPragmaOrExpression(variant as RuleNode);
+      case RuleKind.VersionPragmaRangeExpression:
+        return new VersionPragmaRangeExpression(variant as RuleNode);
+      case RuleKind.VersionPragmaPrefixExpression:
+        return new VersionPragmaPrefixExpression(variant as RuleNode);
+      case RuleKind.VersionPragmaSpecifier:
+        return new VersionPragmaSpecifier(variant as RuleNode);
 
       default:
         assert.fail(`Unexpected variant: ${variant.kind}`);
@@ -3858,10 +3834,14 @@ export class VersionExpression {
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionExpression);
+    assertKind(this.cst.kind, RuleKind.VersionPragmaExpression);
   }
 
-  public get variant(): VersionRange | VersionComparator | VersionSpecifiers | TokenNode {
+  public get variant():
+    | VersionPragmaOrExpression
+    | VersionPragmaRangeExpression
+    | VersionPragmaPrefixExpression
+    | VersionPragmaSpecifier {
     return this.fetch();
   }
 }
@@ -4171,10 +4151,8 @@ export class ConstructorAttribute {
         return new ModifierInvocation(variant as RuleNode);
 
       case TokenKind.InternalKeyword:
-      case TokenKind.OverrideKeyword:
       case TokenKind.PayableKeyword:
       case TokenKind.PublicKeyword:
-      case TokenKind.VirtualKeyword:
         return variant as TokenNode;
 
       default:
@@ -4192,19 +4170,17 @@ export class ConstructorAttribute {
 }
 
 export class UnnamedFunctionAttribute {
-  private readonly fetch: () => ModifierInvocation | TokenNode = once(() => {
+  private readonly fetch: () => ModifierInvocation | OverrideSpecifier | TokenNode = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
     switch (variant.kind) {
       case RuleKind.ModifierInvocation:
         return new ModifierInvocation(variant as RuleNode);
+      case RuleKind.OverrideSpecifier:
+        return new OverrideSpecifier(variant as RuleNode);
 
-      case TokenKind.ConstantKeyword:
       case TokenKind.ExternalKeyword:
-      case TokenKind.InternalKeyword:
       case TokenKind.PayableKeyword:
-      case TokenKind.PrivateKeyword:
-      case TokenKind.PublicKeyword:
       case TokenKind.PureKeyword:
       case TokenKind.ViewKeyword:
         return variant as TokenNode;
@@ -4218,7 +4194,7 @@ export class UnnamedFunctionAttribute {
     assertKind(this.cst.kind, RuleKind.UnnamedFunctionAttribute);
   }
 
-  public get variant(): ModifierInvocation | TokenNode {
+  public get variant(): ModifierInvocation | OverrideSpecifier | TokenNode {
     return this.fetch();
   }
 }
@@ -4349,7 +4325,6 @@ export class FunctionTypeAttribute {
       case TokenKind.ExternalKeyword:
       case TokenKind.PrivateKeyword:
       case TokenKind.PublicKeyword:
-      case TokenKind.ConstantKeyword:
       case TokenKind.PureKeyword:
       case TokenKind.ViewKeyword:
       case TokenKind.PayableKeyword:
@@ -4436,6 +4411,7 @@ export class Statement {
     | DoWhileStatement
     | ContinueStatement
     | BreakStatement
+    | DeleteStatement
     | ReturnStatement
     | ThrowStatement
     | EmitStatement
@@ -4465,6 +4441,8 @@ export class Statement {
         return new ContinueStatement(variant as RuleNode);
       case RuleKind.BreakStatement:
         return new BreakStatement(variant as RuleNode);
+      case RuleKind.DeleteStatement:
+        return new DeleteStatement(variant as RuleNode);
       case RuleKind.ReturnStatement:
         return new ReturnStatement(variant as RuleNode);
       case RuleKind.ThrowStatement:
@@ -4501,6 +4479,7 @@ export class Statement {
     | DoWhileStatement
     | ContinueStatement
     | BreakStatement
+    | DeleteStatement
     | ReturnStatement
     | ThrowStatement
     | EmitStatement
@@ -4662,7 +4641,6 @@ export class Expression {
     | PostfixExpression
     | PrefixExpression
     | FunctionCallExpression
-    | CallOptionsExpression
     | MemberAccessExpression
     | IndexAccessExpression
     | NewExpression
@@ -4709,8 +4687,6 @@ export class Expression {
         return new PrefixExpression(variant as RuleNode);
       case RuleKind.FunctionCallExpression:
         return new FunctionCallExpression(variant as RuleNode);
-      case RuleKind.CallOptionsExpression:
-        return new CallOptionsExpression(variant as RuleNode);
       case RuleKind.MemberAccessExpression:
         return new MemberAccessExpression(variant as RuleNode);
       case RuleKind.IndexAccessExpression:
@@ -4764,7 +4740,6 @@ export class Expression {
     | PostfixExpression
     | PrefixExpression
     | FunctionCallExpression
-    | CallOptionsExpression
     | MemberAccessExpression
     | IndexAccessExpression
     | NewExpression
@@ -4799,6 +4774,30 @@ export class MemberAccess {
   }
 
   public get variant(): TokenNode {
+    return this.fetch();
+  }
+}
+
+export class FunctionCallOptions {
+  private readonly fetch: () => NamedArgumentGroups | NamedArgumentGroup = once(() => {
+    const variant = ast_internal.selectChoice(this.cst);
+
+    switch (variant.kind) {
+      case RuleKind.NamedArgumentGroups:
+        return new NamedArgumentGroups(variant as RuleNode);
+      case RuleKind.NamedArgumentGroup:
+        return new NamedArgumentGroup(variant as RuleNode);
+
+      default:
+        assert.fail(`Unexpected variant: ${variant.kind}`);
+    }
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.FunctionCallOptions);
+  }
+
+  public get variant(): NamedArgumentGroups | NamedArgumentGroup {
     return this.fetch();
   }
 }
@@ -4860,23 +4859,14 @@ export class NumberUnit {
 }
 
 export class StringExpression {
-  private readonly fetch: () =>
-    | StringLiteral
-    | StringLiterals
-    | HexStringLiteral
-    | HexStringLiterals
-    | UnicodeStringLiterals = once(() => {
+  private readonly fetch: () => HexStringLiterals | AsciiStringLiterals | UnicodeStringLiterals = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
     switch (variant.kind) {
-      case RuleKind.StringLiteral:
-        return new StringLiteral(variant as RuleNode);
-      case RuleKind.StringLiterals:
-        return new StringLiterals(variant as RuleNode);
-      case RuleKind.HexStringLiteral:
-        return new HexStringLiteral(variant as RuleNode);
       case RuleKind.HexStringLiterals:
         return new HexStringLiterals(variant as RuleNode);
+      case RuleKind.AsciiStringLiterals:
+        return new AsciiStringLiterals(variant as RuleNode);
       case RuleKind.UnicodeStringLiterals:
         return new UnicodeStringLiterals(variant as RuleNode);
 
@@ -4889,76 +4879,7 @@ export class StringExpression {
     assertKind(this.cst.kind, RuleKind.StringExpression);
   }
 
-  public get variant(): StringLiteral | StringLiterals | HexStringLiteral | HexStringLiterals | UnicodeStringLiterals {
-    return this.fetch();
-  }
-}
-
-export class StringLiteral {
-  private readonly fetch: () => TokenNode = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
-
-    switch (variant.kind) {
-      case TokenKind.SingleQuotedStringLiteral:
-      case TokenKind.DoubleQuotedStringLiteral:
-        return variant as TokenNode;
-
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.StringLiteral);
-  }
-
-  public get variant(): TokenNode {
-    return this.fetch();
-  }
-}
-
-export class HexStringLiteral {
-  private readonly fetch: () => TokenNode = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
-
-    switch (variant.kind) {
-      case TokenKind.SingleQuotedHexStringLiteral:
-      case TokenKind.DoubleQuotedHexStringLiteral:
-        return variant as TokenNode;
-
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.HexStringLiteral);
-  }
-
-  public get variant(): TokenNode {
-    return this.fetch();
-  }
-}
-
-export class UnicodeStringLiteral {
-  private readonly fetch: () => TokenNode = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
-
-    switch (variant.kind) {
-      case TokenKind.SingleQuotedUnicodeStringLiteral:
-      case TokenKind.DoubleQuotedUnicodeStringLiteral:
-        return variant as TokenNode;
-
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.UnicodeStringLiteral);
-  }
-
-  public get variant(): TokenNode {
+  public get variant(): HexStringLiterals | AsciiStringLiterals | UnicodeStringLiterals {
     return this.fetch();
   }
 }
@@ -4975,7 +4896,6 @@ export class YulStatement {
     | YulLeaveStatement
     | YulBreakStatement
     | YulContinueStatement
-    | YulLabel
     | YulExpression = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
@@ -5000,8 +4920,6 @@ export class YulStatement {
         return new YulBreakStatement(variant as RuleNode);
       case RuleKind.YulContinueStatement:
         return new YulContinueStatement(variant as RuleNode);
-      case RuleKind.YulLabel:
-        return new YulLabel(variant as RuleNode);
       case RuleKind.YulExpression:
         return new YulExpression(variant as RuleNode);
 
@@ -5025,33 +4943,7 @@ export class YulStatement {
     | YulLeaveStatement
     | YulBreakStatement
     | YulContinueStatement
-    | YulLabel
     | YulExpression {
-    return this.fetch();
-  }
-}
-
-export class YulAssignmentOperator {
-  private readonly fetch: () => YulColonAndEqual | TokenNode = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
-
-    switch (variant.kind) {
-      case RuleKind.YulColonAndEqual:
-        return new YulColonAndEqual(variant as RuleNode);
-
-      case TokenKind.ColonEqual:
-        return variant as TokenNode;
-
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulAssignmentOperator);
-  }
-
-  public get variant(): YulColonAndEqual | TokenNode {
     return this.fetch();
   }
 }
@@ -5081,52 +4973,31 @@ export class YulSwitchCase {
 }
 
 export class YulExpression {
-  private readonly fetch: () => YulFunctionCallExpression | YulLiteral | YulBuiltInFunction | YulPath = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
+  private readonly fetch: () => YulFunctionCallExpression | YulLiteral | YulBuiltInFunction | YulIdentifierPath = once(
+    () => {
+      const variant = ast_internal.selectChoice(this.cst);
 
-    switch (variant.kind) {
-      case RuleKind.YulFunctionCallExpression:
-        return new YulFunctionCallExpression(variant as RuleNode);
-      case RuleKind.YulLiteral:
-        return new YulLiteral(variant as RuleNode);
-      case RuleKind.YulBuiltInFunction:
-        return new YulBuiltInFunction(variant as RuleNode);
-      case RuleKind.YulPath:
-        return new YulPath(variant as RuleNode);
+      switch (variant.kind) {
+        case RuleKind.YulFunctionCallExpression:
+          return new YulFunctionCallExpression(variant as RuleNode);
+        case RuleKind.YulLiteral:
+          return new YulLiteral(variant as RuleNode);
+        case RuleKind.YulBuiltInFunction:
+          return new YulBuiltInFunction(variant as RuleNode);
+        case RuleKind.YulIdentifierPath:
+          return new YulIdentifierPath(variant as RuleNode);
 
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
+        default:
+          assert.fail(`Unexpected variant: ${variant.kind}`);
+      }
+    },
+  );
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.YulExpression);
   }
 
-  public get variant(): YulFunctionCallExpression | YulLiteral | YulBuiltInFunction | YulPath {
-    return this.fetch();
-  }
-}
-
-export class YulPathComponent {
-  private readonly fetch: () => TokenNode = once(() => {
-    const variant = ast_internal.selectChoice(this.cst);
-
-    switch (variant.kind) {
-      case TokenKind.YulIdentifier:
-      case TokenKind.YulAddressKeyword:
-        return variant as TokenNode;
-
-      default:
-        assert.fail(`Unexpected variant: ${variant.kind}`);
-    }
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulPathComponent);
-  }
-
-  public get variant(): TokenNode {
+  public get variant(): YulFunctionCallExpression | YulLiteral | YulBuiltInFunction | YulIdentifierPath {
     return this.fetch();
   }
 }
@@ -5212,11 +5083,6 @@ export class YulBuiltInFunction {
       case TokenKind.YulBaseFeeKeyword:
       case TokenKind.YulDifficultyKeyword:
       case TokenKind.YulPrevRandaoKeyword:
-      case TokenKind.YulBlobBaseFeeKeyword:
-      case TokenKind.YulBlobHashKeyword:
-      case TokenKind.YulTLoadKeyword:
-      case TokenKind.YulTStoreKeyword:
-      case TokenKind.YulMCopyKeyword:
         return variant as TokenNode;
 
       default:
@@ -5234,19 +5100,16 @@ export class YulBuiltInFunction {
 }
 
 export class YulLiteral {
-  private readonly fetch: () => HexStringLiteral | StringLiteral | TokenNode = once(() => {
+  private readonly fetch: () => TokenNode = once(() => {
     const variant = ast_internal.selectChoice(this.cst);
 
     switch (variant.kind) {
-      case RuleKind.HexStringLiteral:
-        return new HexStringLiteral(variant as RuleNode);
-      case RuleKind.StringLiteral:
-        return new StringLiteral(variant as RuleNode);
-
       case TokenKind.YulTrueKeyword:
       case TokenKind.YulFalseKeyword:
       case TokenKind.YulDecimalLiteral:
       case TokenKind.YulHexLiteral:
+      case TokenKind.HexStringLiteral:
+      case TokenKind.AsciiStringLiteral:
         return variant as TokenNode;
 
       default:
@@ -5258,7 +5121,7 @@ export class YulLiteral {
     assertKind(this.cst.kind, RuleKind.YulLiteral);
   }
 
-  public get variant(): HexStringLiteral | StringLiteral | TokenNode {
+  public get variant(): TokenNode {
     return this.fetch();
   }
 }
@@ -5282,17 +5145,17 @@ export class SourceUnitMembers {
   }
 }
 
-export class VersionExpressionSet {
+export class VersionPragmaExpressions {
   private readonly fetch = once(() => {
     const items = ast_internal.selectRepeated(this.cst);
-    return items.map((item) => new VersionExpression(item as RuleNode));
+    return items.map((item) => new VersionPragmaExpression(item as RuleNode));
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionExpressionSet);
+    assertKind(this.cst.kind, RuleKind.VersionPragmaExpressions);
   }
 
-  public get items(): readonly VersionExpression[] {
+  public get items(): readonly VersionPragmaExpression[] {
     return this.fetch();
   }
 }
@@ -5507,17 +5370,17 @@ export class CatchClauses {
   }
 }
 
-export class StringLiterals {
+export class NamedArgumentGroups {
   private readonly fetch = once(() => {
     const items = ast_internal.selectRepeated(this.cst);
-    return items.map((item) => new StringLiteral(item as RuleNode));
+    return items.map((item) => new NamedArgumentGroup(item as RuleNode));
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.StringLiterals);
+    assertKind(this.cst.kind, RuleKind.NamedArgumentGroups);
   }
 
-  public get items(): readonly StringLiteral[] {
+  public get items(): readonly NamedArgumentGroup[] {
     return this.fetch();
   }
 }
@@ -5525,14 +5388,29 @@ export class StringLiterals {
 export class HexStringLiterals {
   private readonly fetch = once(() => {
     const items = ast_internal.selectRepeated(this.cst);
-    return items.map((item) => new HexStringLiteral(item as RuleNode));
+    return items as TokenNode[];
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.HexStringLiterals);
   }
 
-  public get items(): readonly HexStringLiteral[] {
+  public get items(): readonly TokenNode[] {
+    return this.fetch();
+  }
+}
+
+export class AsciiStringLiterals {
+  private readonly fetch = once(() => {
+    const items = ast_internal.selectRepeated(this.cst);
+    return items as TokenNode[];
+  });
+
+  public constructor(public readonly cst: RuleNode) {
+    assertKind(this.cst.kind, RuleKind.AsciiStringLiterals);
+  }
+
+  public get items(): readonly TokenNode[] {
     return this.fetch();
   }
 }
@@ -5540,14 +5418,14 @@ export class HexStringLiterals {
 export class UnicodeStringLiterals {
   private readonly fetch = once(() => {
     const items = ast_internal.selectRepeated(this.cst);
-    return items.map((item) => new UnicodeStringLiteral(item as RuleNode));
+    return items as TokenNode[];
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.UnicodeStringLiterals);
   }
 
-  public get items(): readonly UnicodeStringLiteral[] {
+  public get items(): readonly TokenNode[] {
     return this.fetch();
   }
 }
@@ -5586,30 +5464,7 @@ export class YulSwitchCases {
  * Separated:
  */
 
-export class VersionExpressionSets {
-  private readonly fetch = once(() => {
-    const [items, separators] = ast_internal.selectSeparated(this.cst);
-
-    return {
-      items: items.map((item) => new VersionExpressionSet(item as RuleNode)),
-      separators: separators as TokenNode[],
-    };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionExpressionSets);
-  }
-
-  public get items(): readonly VersionExpressionSet[] {
-    return this.fetch().items;
-  }
-
-  public get separators(): readonly TokenNode[] {
-    return this.fetch().separators;
-  }
-}
-
-export class VersionSpecifiers {
+export class VersionPragmaSpecifier {
   private readonly fetch = once(() => {
     const [items, separators] = ast_internal.selectSeparated(this.cst);
 
@@ -5617,7 +5472,7 @@ export class VersionSpecifiers {
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.VersionSpecifiers);
+    assertKind(this.cst.kind, RuleKind.VersionPragmaSpecifier);
   }
 
   public get items(): readonly TokenNode[] {
@@ -5799,14 +5654,14 @@ export class AssemblyFlags {
   private readonly fetch = once(() => {
     const [items, separators] = ast_internal.selectSeparated(this.cst);
 
-    return { items: items.map((item) => new StringLiteral(item as RuleNode)), separators: separators as TokenNode[] };
+    return { items: items as TokenNode[], separators: separators as TokenNode[] };
   });
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.AssemblyFlags);
   }
 
-  public get items(): readonly StringLiteral[] {
+  public get items(): readonly TokenNode[] {
     return this.fetch().items;
   }
 
@@ -5867,26 +5722,6 @@ export class NamedArguments {
 
   public constructor(public readonly cst: RuleNode) {
     assertKind(this.cst.kind, RuleKind.NamedArguments);
-  }
-
-  public get items(): readonly NamedArgument[] {
-    return this.fetch().items;
-  }
-
-  public get separators(): readonly TokenNode[] {
-    return this.fetch().separators;
-  }
-}
-
-export class CallOptions {
-  private readonly fetch = once(() => {
-    const [items, separators] = ast_internal.selectSeparated(this.cst);
-
-    return { items: items.map((item) => new NamedArgument(item as RuleNode)), separators: separators as TokenNode[] };
-  });
-
-  public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.CallOptions);
   }
 
   public get items(): readonly NamedArgument[] {
@@ -6018,18 +5853,21 @@ export class YulArguments {
   }
 }
 
-export class YulPaths {
+export class YulIdentifierPaths {
   private readonly fetch = once(() => {
     const [items, separators] = ast_internal.selectSeparated(this.cst);
 
-    return { items: items.map((item) => new YulPath(item as RuleNode)), separators: separators as TokenNode[] };
+    return {
+      items: items.map((item) => new YulIdentifierPath(item as RuleNode)),
+      separators: separators as TokenNode[],
+    };
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulPaths);
+    assertKind(this.cst.kind, RuleKind.YulIdentifierPaths);
   }
 
-  public get items(): readonly YulPath[] {
+  public get items(): readonly YulIdentifierPath[] {
     return this.fetch().items;
   }
 
@@ -6038,21 +5876,18 @@ export class YulPaths {
   }
 }
 
-export class YulPath {
+export class YulIdentifierPath {
   private readonly fetch = once(() => {
     const [items, separators] = ast_internal.selectSeparated(this.cst);
 
-    return {
-      items: items.map((item) => new YulPathComponent(item as RuleNode)),
-      separators: separators as TokenNode[],
-    };
+    return { items: items as TokenNode[], separators: separators as TokenNode[] };
   });
 
   public constructor(public readonly cst: RuleNode) {
-    assertKind(this.cst.kind, RuleKind.YulPath);
+    assertKind(this.cst.kind, RuleKind.YulIdentifierPath);
   }
 
-  public get items(): readonly YulPathComponent[] {
+  public get items(): readonly TokenNode[] {
     return this.fetch().items;
   }
 

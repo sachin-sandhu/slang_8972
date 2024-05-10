@@ -21,20 +21,12 @@ jobs:
     uses: "./.github/workflows/_jobs_ci.yml"
 
   github-pages:
-    uses: "./.github/workflows/_jobs_github_pages.yml"
-    if: "${{ github.repository == 'NomicFoundation/slang' }}" # skip running in forks
     needs: "ci"
-
-    permissions:
-      pages: "write" # to deploy to Pages
-      id-token: "write" # to verify the deployment originates from an appropriate source
+    if: "${{ github.repository == 'NomicFoundation/slang' }}"
+    uses: "./.github/workflows/_jobs_github_pages.yml"
 
   publish:
-    uses: "./.github/workflows/_jobs_publish.yml"
-    if: "${{ github.repository == 'NomicFoundation/slang' }}" # skip running in forks
     needs: "ci"
-
+    if: "${{ github.repository == 'NomicFoundation/slang' }}"
+    uses: "./.github/workflows/_jobs_publish.yml"
     secrets: "inherit"
-    permissions:
-      contents: "write" # to create new branches and releases
-      pull-requests: "write" # to create new pull requests for changesets

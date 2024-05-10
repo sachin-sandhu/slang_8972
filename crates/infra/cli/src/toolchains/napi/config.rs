@@ -6,16 +6,13 @@ use infra_utils::paths::PathExtensions;
 use semver::Version;
 use serde::Deserialize;
 
-use crate::toolchains::napi::glibc::ZigGlibcVersion;
 use crate::toolchains::napi::resolver::NapiResolver;
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct Package {
     name: String,
     version: Version,
     napi: Option<NapiEntry>,
-    slang_metadata: Option<SlangMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -27,12 +24,6 @@ struct NapiEntry {
 struct NapiTriples {
     defaults: bool,
     additional: Vec<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SlangMetadata {
-    target_glibc: ZigGlibcVersion,
 }
 
 pub struct NapiConfig;
@@ -54,8 +45,8 @@ impl NapiConfig {
         Ok(Version::parse(version.trim())?)
     }
 
-    pub fn list_all_targets(resolver: &NapiResolver) -> Result<Vec<String>> {
-        let package = load_package(&resolver.main_package_dir())?;
+    pub fn list_all_targets() -> Result<Vec<String>> {
+        let package = load_package(&NapiResolver::main_package_dir())?;
 
         let triples = package
             .napi
@@ -68,16 +59,6 @@ impl NapiConfig {
         );
 
         Ok(triples.additional)
-    }
-
-    /// Returns the target glibc version for the GNU targets.
-    pub fn target_glibc(resolver: &NapiResolver) -> Result<ZigGlibcVersion> {
-        let package = load_package(&resolver.main_package_dir())?;
-
-        Ok(package
-            .slang_metadata
-            .context("Failed to find NAPI config metadata section")?
-            .target_glibc)
     }
 }
 

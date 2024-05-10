@@ -131,7 +131,7 @@ impl KeywordScannerAtomic {
             [KeywordScannerDefinitionVersionedNode {
                 value: KeywordScannerDefinitionNode::Atom(_),
                 ..
-            }] => Some(Self(Rc::clone(def))),
+            }] => Some(Self(def.clone())),
             _ => None,
         }
     }
@@ -147,7 +147,7 @@ impl std::ops::Deref for KeywordScannerAtomic {
 
 impl KeywordScannerAtomic {
     pub fn definition(&self) -> &KeywordScannerDefinitionVersionedNode {
-        let def = &self.0.definitions().first();
+        let def = &self.0.definitions().get(0);
         def.expect("KeywordScannerAtomic should have exactly one definition")
     }
     pub fn value(&self) -> &str {

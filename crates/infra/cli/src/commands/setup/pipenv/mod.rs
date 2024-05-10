@@ -4,15 +4,18 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use infra_utils::commands::Command;
 use infra_utils::github::GitHub;
-use infra_utils::paths::PathExtensions;
+use infra_utils::paths::{FileWalker, PathExtensions};
 use serde::Deserialize;
 
 pub fn setup_pipenv() -> Result<()> {
-    // Install the 'pipenv' binary using the version defined in the `Pipfile`.
+    // Install the 'pipenv' binary using the version in the top-level `Pipfile`.
     install_pipenv_binary()?;
 
-    // Use it to install other dependencies:
-    install_project_packages()?;
+    // Each Python project has its own Pipfile at the root of the project.
+    // Find all of them, and run 'pipenv install' in each directory.
+    for pip_file in FileWalker::from_repo_root().find(["**/Pipfile"])? {
+        install_project_packages(&pip_file)?;
+    }
 
     Ok(())
 }
@@ -39,10 +42,13 @@ fn install_pipenv_binary() -> Result<()> {
         .run()
 }
 
-fn install_project_packages() -> Result<()> {
+fn install_project_packages(pip_file: &Path) -> Result<()> {
+    let project_directory = pip_file.unwrap_parent();
+
     let mut command = Command::new("python3")
         .property("-m", "pipenv")
-        .arg("install");
+        .arg("install")
+        .current_dir(project_directory);
 
     if GitHub::is_running_in_ci() {
         command = command.flag("--deploy");

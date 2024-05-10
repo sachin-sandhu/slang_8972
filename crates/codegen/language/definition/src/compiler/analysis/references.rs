@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::rc::Rc;
 
 use indexmap::IndexMap;
 use semver::Version;
@@ -20,7 +19,7 @@ use crate::model::{
 };
 
 pub(crate) fn analyze_references(analysis: &mut Analysis) {
-    let language = Rc::clone(&analysis.language);
+    let language = analysis.language.clone();
 
     let mut enablement = VersionSet::new();
     analysis.add_all_versions(&mut enablement);
@@ -116,7 +115,6 @@ fn check_repeated(analysis: &mut Analysis, item: &SpannedRepeatedItem, enablemen
     let SpannedRepeatedItem {
         name,
         reference,
-        allow_empty: _,
         enabled,
     } = item;
 
@@ -138,7 +136,6 @@ fn check_separated(analysis: &mut Analysis, item: &SpannedSeparatedItem, enablem
         name,
         reference,
         separator,
-        allow_empty: _,
         enabled,
     } = item;
 
@@ -392,7 +389,7 @@ fn check_reference(
     if let Some(source) = source {
         analysis.metadata[source]
             .referenced_items
-            .push((**reference).clone());
+            .push((**reference).to_owned());
     }
 }
 

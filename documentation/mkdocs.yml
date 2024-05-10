@@ -1,5 +1,3 @@
-# More Info: https://www.mkdocs.org/user-guide/configuration/
-
 #
 # Configuration:
 #
@@ -12,21 +10,10 @@ site_description: >
 
 repo_name: "NomicFoundation/slang"
 repo_url: "https://github.com/NomicFoundation/slang"
-site_url: "https://NomicFoundation.github.io/slang"
 edit_uri: "edit/main/documentation/public"
 
 docs_dir: "./public"
 site_dir: "./target/site" # _SLANG_MKDOCS_DOCUMENTATION_SITE_DIR_ (keep in sync)
-
-validation:
-  nav:
-    absolute_links: "warn"
-    not_found: "warn"
-    omitted_files: "warn"
-  links:
-    absolute_links: "warn"
-    not_found: "warn"
-    unrecognized_links: "warn"
 
 #
 # Footer:
@@ -91,7 +78,7 @@ markdown_extensions:
 plugins:
   - "search"
   - "literate-nav":
-      nav_file: ".navigation.md" # use a dot file name, to be excluded from public pages
+      nav_file: "NAV.md"
       markdown_extensions: []
   - "minify":
       minify_html: true

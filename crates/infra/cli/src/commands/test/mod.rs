@@ -3,9 +3,8 @@ use clap::{Parser, ValueEnum};
 use infra_utils::cargo::CargoWorkspace;
 use infra_utils::commands::Command;
 use infra_utils::github::GitHub;
-use infra_utils::terminal::Terminal;
 
-use crate::utils::{ClapExtensions, OrderedCommand};
+use crate::utils::{ClapExtensions, OrderedCommand, Terminal};
 
 #[derive(Clone, Debug, Default, Parser)]
 pub struct TestController {

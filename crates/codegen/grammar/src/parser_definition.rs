@@ -1,8 +1,6 @@
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use codegen_language_definition::model;
-
 use crate::visitor::{GrammarVisitor, Visitable};
 use crate::{
     KeywordScannerDefinitionRef, PrecedenceParserDefinitionRef, ScannerDefinitionRef,
@@ -11,16 +9,16 @@ use crate::{
 
 /// A named wrapper, used to give a name to a [`ParserDefinitionNode`].
 #[derive(Clone, Debug)]
-pub struct Labeled<T> {
-    pub label: String,
-    pub value: T,
+pub struct Named<T> {
+    pub name: String,
+    pub node: T,
 }
 
-impl<T> std::ops::Deref for Labeled<T> {
+impl<T> std::ops::Deref for Named<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.value
+        &self.node
     }
 }
 
@@ -55,46 +53,22 @@ impl Visitable for TriviaParserDefinitionRef {
     }
 }
 
-/// How many tokens have to be matched to trigger the error recovery.
-/// For ambiguous syntaxes this needs to be set to at least N, where N
-/// is the token lookahead required to disambiguate the syntax.
-///
-// By default, we assume no lookahead (0) is required to recover from
-// unrecognized body between delimiters, so it's always triggered.
-#[derive(Clone, Debug, Default)]
-pub struct DelimitedRecoveryTokenThreshold(pub u8);
-
-impl From<model::FieldDelimiters> for DelimitedRecoveryTokenThreshold {
-    fn from(delimiters: model::FieldDelimiters) -> Self {
-        Self(
-            delimiters
-                .tokens_matched_acceptance_threshold
-                .unwrap_or(DelimitedRecoveryTokenThreshold::default().0),
-        )
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum ParserDefinitionNode {
     Versioned(Box<Self>, Vec<VersionQualityRange>),
     Optional(Box<Self>),
-    ZeroOrMore(Labeled<Box<Self>>),
-    OneOrMore(Labeled<Box<Self>>),
-    Sequence(Vec<Labeled<Self>>),
-    Choice(Labeled<Vec<Self>>),
+    ZeroOrMore(Named<Box<Self>>),
+    OneOrMore(Named<Box<Self>>),
+    Sequence(Vec<Named<Self>>),
+    Choice(Named<Vec<Self>>),
     ScannerDefinition(ScannerDefinitionRef),
     KeywordScannerDefinition(KeywordScannerDefinitionRef),
     TriviaParserDefinition(TriviaParserDefinitionRef),
     ParserDefinition(ParserDefinitionRef),
     PrecedenceParserDefinition(PrecedenceParserDefinitionRef),
-    DelimitedBy(
-        Labeled<Box<Self>>,
-        Box<Self>,
-        Labeled<Box<Self>>,
-        DelimitedRecoveryTokenThreshold,
-    ),
-    SeparatedBy(Labeled<Box<Self>>, Labeled<Box<Self>>),
-    TerminatedBy(Box<Self>, Labeled<Box<Self>>),
+    DelimitedBy(Named<Box<Self>>, Box<Self>, Named<Box<Self>>),
+    SeparatedBy(Named<Box<Self>>, Named<Box<Self>>),
+    TerminatedBy(Box<Self>, Named<Box<Self>>),
 }
 
 impl From<ScannerDefinitionRef> for ParserDefinitionNode {
@@ -125,23 +99,23 @@ impl Visitable for ParserDefinitionNode {
     fn accept_visitor<V: GrammarVisitor>(&self, visitor: &mut V) {
         visitor.parser_definition_node_enter(self);
         match self {
-            Self::Versioned(value, _)
-            | Self::Optional(value)
-            | Self::ZeroOrMore(Labeled { value, .. })
-            | Self::OneOrMore(Labeled { value, .. }) => value.accept_visitor(visitor),
+            Self::Versioned(node, _)
+            | Self::Optional(node)
+            | Self::ZeroOrMore(Named { node, .. })
+            | Self::OneOrMore(Named { node, .. }) => node.accept_visitor(visitor),
 
             Self::Sequence(nodes) => {
                 for node in nodes {
                     node.accept_visitor(visitor);
                 }
             }
-            Self::Choice(Labeled { value: nodes, .. }) => {
+            Self::Choice(Named { node: nodes, .. }) => {
                 for node in nodes {
                     node.accept_visitor(visitor);
                 }
             }
 
-            Self::DelimitedBy(open, body, close, ..) => {
+            Self::DelimitedBy(open, body, close) => {
                 open.accept_visitor(visitor);
                 body.accept_visitor(visitor);
                 close.accept_visitor(visitor);
@@ -157,8 +131,8 @@ impl Visitable for ParserDefinitionNode {
                 terminator.accept_visitor(visitor);
             }
 
-            Self::ScannerDefinition(def) => def.accept_visitor(visitor),
-            Self::KeywordScannerDefinition(_)
+            Self::ScannerDefinition(_)
+            | Self::KeywordScannerDefinition(_)
             | Self::TriviaParserDefinition(_)
             | Self::ParserDefinition(_)
             | Self::PrecedenceParserDefinition(_) => {}

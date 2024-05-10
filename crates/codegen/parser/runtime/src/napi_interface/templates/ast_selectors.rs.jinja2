@@ -2,11 +2,11 @@
 
 use std::rc::Rc;
 
-use napi::Either;
+use napi::{Env, JsObject};
 use napi_derive::napi;
 
-use crate::napi_interface::cst::{RuleNode, TokenNode};
-use crate::napi_interface::{RuleKind, RustLabeledNode, RustNode, RustRuleNode, TokenKind};
+use crate::napi_interface::cst::{RuleNode, ToJS};
+use crate::napi_interface::{RuleKind, RustNamedNode, RustNode, RustRuleNode, TokenKind};
 
 //
 // Sequences:
@@ -19,8 +19,9 @@ use crate::napi_interface::{RuleKind, RustLabeledNode, RustNode, RustRuleNode, T
 )]
 pub fn select_sequence(
     #[napi(ts_arg_type = "cst.RuleNode")] node: &RuleNode,
-) -> Result<Vec<Option<Either<RuleNode, TokenNode>>>> {
-    let mut selector = Selector::new(node);
+    env: Env,
+) -> Result<Vec<Option<JsObject>>> {
+    let mut selector = Selector::new(node, env);
 
     let result = match node.kind() {
         {%- for sequence in ast_model.sequences -%}
@@ -39,7 +40,7 @@ pub fn select_sequence(
 
 {% for sequence in ast_model.sequences %}
     impl Selector {
-        fn {{ sequence.name | snake_case }}(&mut self) -> Result<Vec<Option<Either<RuleNode, TokenNode>>>> {
+        fn {{ sequence.name | snake_case }}(&mut self) -> Result<Vec<Option<JsObject>>> {
             Ok(vec![
                 {%- for field in sequence.fields -%}
                     {%- if field.is_optional -%}
@@ -80,8 +81,9 @@ pub fn select_sequence(
 )]
 pub fn select_choice(
     #[napi(ts_arg_type = "cst.RuleNode")] node: &RuleNode,
-) -> Result<Either<RuleNode, TokenNode>> {
-    let mut selector = Selector::new(node);
+    env: Env,
+) -> Result<JsObject> {
+    let mut selector = Selector::new(node, env);
 
     let result = match node.kind() {
         {%- for choice in ast_model.choices -%}
@@ -100,7 +102,7 @@ pub fn select_choice(
 
 {% for choice in ast_model.choices %}
     impl Selector {
-        fn {{ choice.name | snake_case }}(&mut self) -> Result<Either<RuleNode, TokenNode>> {
+        fn {{ choice.name | snake_case }}(&mut self) -> Result<JsObject> {
             self.select(|node| {
                 {%- set non_terminals_len = choice.non_terminals | length -%}
                 {%- set terminals_len = choice.terminals | length -%}
@@ -144,8 +146,9 @@ pub fn select_choice(
 )]
 pub fn select_repeated(
     #[napi(ts_arg_type = "cst.RuleNode")] node: &RuleNode,
-) -> Result<Vec<Either<RuleNode, TokenNode>>> {
-    let mut selector = Selector::new(node);
+    env: Env,
+) -> Result<Vec<JsObject>> {
+    let mut selector = Selector::new(node, env);
 
     let result = match node.kind() {
         {%- for repeated in ast_model.repeated -%}
@@ -164,7 +167,7 @@ pub fn select_repeated(
 
 {% for repeated in ast_model.repeated %}
     impl Selector {
-        fn {{ repeated.name | snake_case }}(&mut self) -> Result<Vec<Either<RuleNode, TokenNode>>> {
+        fn {{ repeated.name | snake_case }}(&mut self) -> Result<Vec<JsObject>> {
             let mut items = vec![];
 
             while let Some(item) = self.try_select(|node| {
@@ -193,8 +196,9 @@ pub fn select_repeated(
 )]
 pub fn select_separated(
     #[napi(ts_arg_type = "cst.RuleNode")] node: &RuleNode,
-) -> Result<Vec<Vec<Either<RuleNode, TokenNode>>>> {
-    let mut selector = Selector::new(node);
+    env: Env,
+) -> Result<Vec<Vec<JsObject>>> {
+    let mut selector = Selector::new(node, env);
 
     let result = match node.kind() {
         {%- for separated in ast_model.separated -%}
@@ -213,30 +217,28 @@ pub fn select_separated(
 
 {% for separated in ast_model.separated %}
     impl Selector {
-        fn {{ separated.name | snake_case }}(&mut self) -> Result<Vec<Vec<Either<RuleNode, TokenNode>>>> {
+        fn {{ separated.name | snake_case }}(&mut self) -> Result<Vec<Vec<JsObject>>> {
             let mut separated = vec![];
             let mut separators = vec![];
 
-            if let Some(first) = self.try_select(|node| {
+            separated.push(self.select(|node| {
                 {%- if separated.is_terminal -%}
                     node.is_token_with_kind(TokenKind::{{ separated.reference }})
                 {%- else -%}
                     node.is_rule_with_kind(RuleKind::{{ separated.reference }})
                 {%- endif -%}
-            })? {
-                separated.push(first);
+            })?);
 
-                while let Some(separator) = self.try_select(|node| node.is_token_with_kind(TokenKind::{{ separated.separator }}))? {
-                    separators.push(separator);
+            while let Some(separator) = self.try_select(|node| node.is_token_with_kind(TokenKind::{{ separated.separator }}))? {
+                separators.push(separator);
 
-                    separated.push(self.select(|node| {
-                        {%- if separated.is_terminal -%}
-                            node.is_token_with_kind(TokenKind::{{ separated.reference }})
-                        {%- else -%}
-                            node.is_rule_with_kind(RuleKind::{{ separated.reference }})
-                        {%- endif -%}
-                    })?);
-                }
+                separated.push(self.select(|node| {
+                    {%- if separated.is_terminal -%}
+                        node.is_token_with_kind(TokenKind::{{ separated.reference }})
+                    {%- else -%}
+                        node.is_rule_with_kind(RuleKind::{{ separated.reference }})
+                    {%- endif -%}
+                })?);
             }
 
             Ok(vec![separated, separators])
@@ -249,42 +251,47 @@ pub fn select_separated(
 //
 
 struct Selector {
+    env: Env,
     node: Rc<RustRuleNode>,
     index: usize,
 }
 
 impl Selector {
-    fn new(node: &RuleNode) -> Self {
+    fn new(node: &RuleNode, env: Env) -> Self {
         Self {
-            node: Rc::clone(&node.0),
+            env,
+            node: node.0.clone(),
             index: 0,
         }
     }
 
-    fn select(&mut self, filter: impl FnOnce(&RustNode) -> bool) -> Result<Either<RuleNode, TokenNode>> {
+    fn select(&mut self, filter: impl FnOnce(&RustNode) -> bool) -> Result<JsObject> {
         match self.try_select(filter)? {
             Some(node) => Ok(node),
             None => Error::MissingChild(self.index).into(),
         }
     }
 
-    fn try_select(&mut self, filter: impl FnOnce(&RustNode) -> bool) -> Result<Option<Either<RuleNode, TokenNode>>> {
+    fn try_select(&mut self, filter: impl FnOnce(&RustNode) -> bool) -> Result<Option<JsObject>> {
         while let Some(child) = self.node.children.get(self.index) {
             match child {
-                node if node.is_trivia() => {
+                RustNamedNode {
+                    name: _,
+                    node: RustNode::Rule(rule),
+                } if rule.kind.is_trivia() => {
                     // skip trivia, since it's not part of the AST
                     self.index += 1;
                     continue;
                 }
-                RustLabeledNode {
-                    label: _,
+                RustNamedNode {
+                    name: _,
                     node: RustNode::Token(token),
                 } if matches!(token.kind, TokenKind::SKIPPED) => {
                     return Error::SkippedToken(self.index).into();
                 }
-                labeled if filter(labeled) => {
+                node if filter(node) => {
                     self.index += 1;
-                    return Ok(Some(labeled.node.clone().into_js_either_node()));
+                    return Ok(Some(node.to_js(&self.env)));
                 }
                 _ => {
                     break;

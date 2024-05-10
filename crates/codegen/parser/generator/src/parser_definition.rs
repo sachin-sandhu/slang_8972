@@ -1,5 +1,5 @@
 use codegen_grammar::{
-    Labeled, ParserDefinitionNode, ParserDefinitionRef, TriviaParserDefinitionRef, VersionQuality,
+    Named, ParserDefinitionNode, ParserDefinitionRef, TriviaParserDefinitionRef, VersionQuality,
     VersionQualityRange,
 };
 use inflector::Inflector;
@@ -47,16 +47,16 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                 }
             }
 
-            Self::ZeroOrMore(Labeled { label, value }) => {
-                let parser = value.to_parser_code(context_name, is_trivia);
+            Self::ZeroOrMore(Named { name, node }) => {
+                let parser = node.to_parser_code(context_name, is_trivia);
 
-                let parser = if label.is_empty() {
+                let parser = if name.is_empty() {
                     parser
                 } else {
-                    let name = format_ident!("{}", label.to_pascal_case());
+                    let name = format_ident!("{}", name.to_pascal_case());
 
                     quote! {
-                        #parser.with_label(NodeLabel::#name)
+                        #parser.with_name(FieldName::#name)
                     }
                 };
 
@@ -65,16 +65,16 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                 }
             }
 
-            Self::OneOrMore(Labeled { label, value }) => {
-                let parser = value.to_parser_code(context_name, is_trivia);
+            Self::OneOrMore(Named { name, node }) => {
+                let parser = node.to_parser_code(context_name, is_trivia);
 
-                let parser = if label.is_empty() {
+                let parser = if name.is_empty() {
                     parser
                 } else {
-                    let name = format_ident!("{}", label.to_pascal_case());
+                    let name = format_ident!("{}", name.to_pascal_case());
 
                     quote! {
-                        #parser.with_label(NodeLabel::#name)
+                        #parser.with_name(FieldName::#name)
                     }
                 };
 
@@ -84,43 +84,43 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
             }
 
             Self::Sequence(nodes) => match &nodes[..] {
-                [Labeled { label, value }] => {
-                    let parser = value.to_parser_code(context_name, is_trivia);
+                [Named { name, node }] => {
+                    let parser = node.to_parser_code(context_name, is_trivia);
 
-                    if label.is_empty() {
+                    if name.is_empty() {
                         parser
                     } else {
-                        let name = format_ident!("{}", label.to_pascal_case());
+                        let name = format_ident!("{}", name.to_pascal_case());
 
                         quote! {
-                            #parser.with_label(NodeLabel::#name)
+                            #parser.with_name(FieldName::#name)
                         }
                     }
                 }
-                nodes => make_sequence_versioned(nodes.iter().map(|Labeled { label, value }| {
+                nodes => make_sequence_versioned(nodes.iter().map(|Named { name, node }| {
                     (
-                        value.to_parser_code(context_name, is_trivia),
-                        label.clone(),
-                        value.applicable_version_quality_ranges(),
+                        node.to_parser_code(context_name, is_trivia),
+                        name.clone(),
+                        node.applicable_version_quality_ranges(),
                     )
                 })),
             },
 
-            Self::Choice(Labeled { label, value }) => {
-                let parser = make_choice_versioned(value.iter().map(|node| {
+            Self::Choice(Named { name, node: nodes }) => {
+                let parser = make_choice_versioned(nodes.iter().map(|node| {
                     (
                         node.to_parser_code(context_name, is_trivia),
                         node.applicable_version_quality_ranges(),
                     )
                 }));
 
-                if label.is_empty() {
+                if name.is_empty() {
                     parser
                 } else {
-                    let name = format_ident!("{}", label.to_pascal_case());
+                    let name = format_ident!("{}", name.to_pascal_case());
 
                     quote! {
-                        #parser.with_label(NodeLabel::#name)
+                        #parser.with_name(FieldName::#name)
                     }
                 }
             }
@@ -191,9 +191,9 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                 quote! { self.#function_name(input) }
             }
 
-            Self::DelimitedBy(open, body, close, threshold) => {
-                let open_label = format_ident!("{}", open.label.to_pascal_case());
-                let close_label = format_ident!("{}", close.label.to_pascal_case());
+            Self::DelimitedBy(open, body, close) => {
+                let open_field_name = format_ident!("{}", open.name.to_pascal_case());
+                let close_field_name = format_ident!("{}", close.name.to_pascal_case());
                 let [open_delim, close_delim] = match (open.as_ref(), close.as_ref()) {
                     (
                         ParserDefinitionNode::ScannerDefinition(open, ..),
@@ -201,7 +201,6 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                     ) => [open, close].map(|scanner| format_ident!("{}", scanner.name())),
                     _ => unreachable!("Only tokens are permitted as delimiters"),
                 };
-                let threshold = threshold.0;
 
                 let parser = body.to_parser_code(context_name, is_trivia);
                 let body_parser = body.applicable_version_quality_ranges().wrap_code(
@@ -210,7 +209,7 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                             .recover_until_with_nested_delims::<_, #lex_ctx>(input,
                                 self,
                                 TokenKind::#close_delim,
-                                TokenAcceptanceThreshold(#threshold),
+                                RecoverFromNoMatch::Yes,
                             )
                         )?;
                     },
@@ -222,13 +221,13 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                         let mut delim_guard = input.open_delim(TokenKind::#close_delim);
                         let input = delim_guard.ctx();
 
-                        seq.elem_labeled(
-                            NodeLabel::#open_label,
+                        seq.elem_named(
+                            FieldName::#open_field_name,
                             self.parse_token_with_trivia::<#lex_ctx>(input, TokenKind::#open_delim)
                         )?;
                         #body_parser
-                        seq.elem_labeled(
-                            NodeLabel::#close_label,
+                        seq.elem_named(
+                            FieldName::#close_field_name,
                             self.parse_token_with_trivia::<#lex_ctx>(input, TokenKind::#close_delim)
                         )?;
                         seq.finish()
@@ -237,7 +236,7 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
             }
 
             Self::SeparatedBy(body, separator) => {
-                let separator_label = format_ident!("{}", separator.label.to_pascal_case());
+                let separator_field_name = format_ident!("{}", separator.name.to_pascal_case());
                 let separator = match separator.as_ref() {
                     ParserDefinitionNode::ScannerDefinition(scanner, ..) => {
                         format_ident!("{name}", name = scanner.name())
@@ -245,21 +244,21 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                     _ => unreachable!("Only tokens are permitted as separators"),
                 };
 
-                let body_label = format_ident!("{}", body.label.to_pascal_case());
+                let body_field_name = format_ident!("{}", body.name.to_pascal_case());
                 let parser = body.to_parser_code(context_name, is_trivia);
 
                 quote! {
                     SeparatedHelper::run::<_, #lex_ctx>(
                         input,
                         self,
-                        |input| #parser.with_label(NodeLabel::#body_label),
+                        |input| #parser.with_name(FieldName::#body_field_name),
                         TokenKind::#separator,
-                        NodeLabel::#separator_label,
+                        FieldName::#separator_field_name,
                     )
                 }
             }
             Self::TerminatedBy(body, terminator) => {
-                let terminator_label = format_ident!("{}", terminator.label.to_pascal_case());
+                let terminator_field_name = format_ident!("{}", terminator.name.to_pascal_case());
 
                 let terminator = match terminator.as_ref() {
                     ParserDefinitionNode::ScannerDefinition(scanner, ..) => {
@@ -276,8 +275,7 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                             .recover_until_with_nested_delims::<_, #lex_ctx>(input,
                                 self,
                                 TokenKind::#terminator,
-                                 // Requires at least a partial match not to risk misparsing
-                                TokenAcceptanceThreshold(1u8),
+                                RecoverFromNoMatch::No,
                             )
                         )?;
                     },
@@ -287,8 +285,8 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                 quote! {
                     SequenceHelper::run(|mut seq| {
                         #body_parser
-                        seq.elem_labeled(
-                            NodeLabel::#terminator_label,
+                        seq.elem_named(
+                            FieldName::#terminator_field_name,
                             self.parse_token_with_trivia::<#lex_ctx>(input, TokenKind::#terminator)
                         )?;
                         seq.finish()
@@ -304,10 +302,10 @@ impl ParserDefinitionNodeExtensions for ParserDefinitionNode {
                 version_quality_ranges.clone()
             }
 
-            ParserDefinitionNode::Optional(value)
-            | ParserDefinitionNode::ZeroOrMore(Labeled { value, .. })
-            | ParserDefinitionNode::OneOrMore(Labeled { value, .. }) => {
-                value.applicable_version_quality_ranges()
+            ParserDefinitionNode::Optional(node)
+            | ParserDefinitionNode::ZeroOrMore(Named { node, .. })
+            | ParserDefinitionNode::OneOrMore(Named { node, .. }) => {
+                node.applicable_version_quality_ranges()
             }
 
             _ => vec![],
@@ -379,9 +377,9 @@ pub fn make_sequence_versioned(
             let code = if name.is_empty() {
                 quote! { seq.elem(#parser)?; }
             } else {
-                let label = format_ident!("{}", name.to_pascal_case());
+                let field_name = format_ident!("{}", name.to_pascal_case());
 
-                quote! { seq.elem_labeled(NodeLabel::#label, #parser)?; }
+                quote! { seq.elem_named(FieldName::#field_name, #parser)?; }
             };
 
             versions.wrap_code(code, None)

@@ -11,7 +11,3 @@ anyhow = { workspace = true }
 codegen_spec = { workspace = true }
 infra_utils = { workspace = true }
 solidity_language = { workspace = true }
-
-[lints]
-workspace = true
-

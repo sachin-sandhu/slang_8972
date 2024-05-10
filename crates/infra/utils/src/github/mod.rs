@@ -22,19 +22,19 @@ impl GitHub {
         let title = title.as_ref();
 
         if Self::is_running_in_ci() {
-            eprintln!("::group::{title}");
+            println!("::group::{title}");
         } else {
-            eprintln!();
-            eprintln!("{title}");
-            eprintln!();
+            println!();
+            println!("{title}");
+            println!();
         }
 
         let result = operation();
 
         if Self::is_running_in_ci() {
-            eprintln!("::endgroup::");
+            println!("::endgroup::");
         } else {
-            eprintln!();
+            println!();
         }
 
         result

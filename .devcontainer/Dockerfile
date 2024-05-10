@@ -27,7 +27,5 @@ RUN sudo apt-get update \
   && sudo apt-get install --yes pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
-# Setup default Bash and Zsh for local development inside the image:
+# Setup ZSH for local development inside the image:
 COPY ./scripts/ /home/vscode/
-# Users that mount their own .bashrc are responsible to source `.bashrc_devcontainer` themselves
-RUN echo "source /home/vscode/.bashrc_devcontainer" >> /home/vscode/.bashrc

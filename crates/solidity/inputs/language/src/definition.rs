@@ -28,7 +28,7 @@ codegen_language_macros::compile!(Language(
         "0.6.12", "0.7.0", "0.7.1", "0.7.2", "0.7.3", "0.7.4", "0.7.5", "0.7.6", "0.8.0", "0.8.1",
         "0.8.2", "0.8.3", "0.8.4", "0.8.5", "0.8.6", "0.8.7", "0.8.8", "0.8.9", "0.8.10", "0.8.11",
         "0.8.12", "0.8.13", "0.8.14", "0.8.15", "0.8.16", "0.8.17", "0.8.18", "0.8.19", "0.8.20",
-        "0.8.21", "0.8.22", "0.8.23", "0.8.24", "0.8.25"
+        "0.8.21", "0.8.22"
     ],
     sections = [
         Section(
@@ -40,13 +40,9 @@ codegen_language_macros::compile!(Language(
                     items = [
                         Struct(
                             name = SourceUnit,
-                            fields = (members = Required(SourceUnitMembers))
+                            fields = (members = Optional(reference = SourceUnitMembers))
                         ),
-                        Repeated(
-                            name = SourceUnitMembers,
-                            reference = SourceUnitMember,
-                            allow_empty = true
-                        ),
+                        Repeated(name = SourceUnitMembers, reference = SourceUnitMember),
                         Enum(
                             name = SourceUnitMember,
                             variants = [
@@ -115,34 +111,39 @@ codegen_language_macros::compile!(Language(
                             name = ExperimentalFeature,
                             variants = [
                                 EnumVariant(reference = Identifier),
-                                EnumVariant(reference = StringLiteral)
+                                EnumVariant(reference = AsciiStringLiteral)
                             ]
                         ),
                         Struct(
                             name = VersionPragma,
                             fields = (
                                 solidity_keyword = Required(SolidityKeyword),
-                                sets = Required(VersionExpressionSets)
+                                expressions = Required(VersionPragmaExpressions)
                             )
                         ),
-                        Separated(
-                            name = VersionExpressionSets,
-                            reference = VersionExpressionSet,
-                            separator = BarBar
+                        Repeated(
+                            name = VersionPragmaExpressions,
+                            reference = VersionPragmaExpression
                         ),
-                        Repeated(name = VersionExpressionSet, reference = VersionExpression),
                         Precedence(
-                            name = VersionExpression,
+                            name = VersionPragmaExpression,
                             precedence_expressions = [
                                 PrecedenceExpression(
-                                    name = VersionRange,
+                                    name = VersionPragmaOrExpression,
+                                    operators = [PrecedenceOperator(
+                                        model = BinaryLeftAssociative,
+                                        fields = (operator = Required(BarBar))
+                                    )]
+                                ),
+                                PrecedenceExpression(
+                                    name = VersionPragmaRangeExpression,
                                     operators = [PrecedenceOperator(
                                         model = BinaryLeftAssociative,
                                         fields = (operator = Required(Minus))
                                     )]
                                 ),
                                 PrecedenceExpression(
-                                    name = VersionComparator,
+                                    name = VersionPragmaPrefixExpression,
                                     operators = [
                                         PrecedenceOperator(
                                             model = Prefix,
@@ -175,87 +176,39 @@ codegen_language_macros::compile!(Language(
                                     ]
                                 )
                             ],
-                            primary_expressions = [
-                                PrimaryExpression(reference = VersionSpecifiers),
-                                PrimaryExpression(reference = SingleQuotedVersionLiteral),
-                                PrimaryExpression(reference = DoubleQuotedVersionLiteral)
-                            ]
+                            primary_expressions =
+                                [PrimaryExpression(reference = VersionPragmaSpecifier)]
                         ),
                         Separated(
-                            // __SLANG_VERSION_SPECIFIER_SYNTAX__ (keep in sync)
-                            name = VersionSpecifiers,
-                            reference = VersionSpecifier,
+                            name = VersionPragmaSpecifier,
+                            reference = VersionPragmaValue,
                             separator = Period
                         ),
                         Token(
-                            // __SLANG_VERSION_SPECIFIER_SYNTAX__ (keep in sync)
-                            name = VersionSpecifier,
+                            name = VersionPragmaValue,
                             definitions = [TokenDefinition(
-                                scanner = Fragment(VersionSpecifierFragment)
-                            )]
-                        ),
-                        Token(
-                            // __SLANG_VERSION_SPECIFIER_SYNTAX__ (keep in sync)
-                            name = SingleQuotedVersionLiteral,
-                            definitions = [TokenDefinition(
-                                scanner = Sequence([
-                                    Atom("'"),
-                                    Fragment(VersionSpecifierFragment),
-                                    ZeroOrMore(Sequence([
-                                        Atom("."),
-                                        Fragment(VersionSpecifierFragment)
-                                    ])),
-                                    Atom("'")
-                                ])
-                            )]
-                        ),
-                        Token(
-                            // __SLANG_VERSION_SPECIFIER_SYNTAX__ (keep in sync)
-                            name = DoubleQuotedVersionLiteral,
-                            definitions = [TokenDefinition(
-                                scanner = Sequence([
-                                    Atom("\""),
-                                    Fragment(VersionSpecifierFragment),
-                                    ZeroOrMore(Sequence([
-                                        Atom("."),
-                                        Fragment(VersionSpecifierFragment)
-                                    ])),
-                                    Atom("\"")
-                                ])
-                            )]
-                        ),
-                        Fragment(
-                            name = VersionSpecifierFragment,
-                            scanner = OneOrMore(Choice([
-                                Range(inclusive_start = '0', inclusive_end = '9'),
-                                Atom("x"),
-                                Atom("X"),
-                                Atom("*")
-                            ]))
-                        ),
-                        Keyword(
-                            name = AbicoderKeyword,
-                            identifier = Identifier,
-                            definitions = [KeywordDefinition(
-                                reserved = Never,
-                                value = Atom("abicoder")
-                            )]
-                        ),
-                        Keyword(
-                            name = ExperimentalKeyword,
-                            identifier = Identifier,
-                            definitions = [KeywordDefinition(
-                                reserved = Never,
-                                value = Atom("experimental")
+                                scanner = OneOrMore(Choice([
+                                    Range(inclusive_start = '0', inclusive_end = '9'),
+                                    Atom("x"),
+                                    Atom("X"),
+                                    Atom("*")
+                                ]))
                             )]
                         ),
                         Keyword(
                             name = SolidityKeyword,
                             identifier = Identifier,
-                            definitions = [KeywordDefinition(
-                                reserved = Never,
-                                value = Atom("solidity")
-                            )]
+                            definitions = [KeywordDefinition(value = Atom("solidity"))]
+                        ),
+                        Keyword(
+                            name = ExperimentalKeyword,
+                            identifier = Identifier,
+                            definitions = [KeywordDefinition(value = Atom("experimental"))]
+                        ),
+                        Keyword(
+                            name = AbicoderKeyword,
+                            identifier = Identifier,
+                            definitions = [KeywordDefinition(value = Atom("abicoder"))]
                         )
                     ]
                 ),
@@ -282,7 +235,7 @@ codegen_language_macros::compile!(Language(
                         Struct(
                             name = PathImport,
                             fields = (
-                                path = Required(StringLiteral),
+                                path = Required(AsciiStringLiteral),
                                 alias = Optional(reference = ImportAlias)
                             )
                         ),
@@ -292,7 +245,7 @@ codegen_language_macros::compile!(Language(
                                 asterisk = Required(Asterisk),
                                 alias = Required(ImportAlias),
                                 from_keyword = Required(FromKeyword),
-                                path = Required(StringLiteral)
+                                path = Required(AsciiStringLiteral)
                             )
                         ),
                         Struct(
@@ -306,7 +259,7 @@ codegen_language_macros::compile!(Language(
                                 symbols = Required(ImportDeconstructionSymbols),
                                 close_brace = Required(CloseBrace),
                                 from_keyword = Required(FromKeyword),
-                                path = Required(StringLiteral)
+                                path = Required(AsciiStringLiteral)
                             )
                         ),
                         Separated(
@@ -430,8 +383,7 @@ codegen_language_macros::compile!(Language(
                         ),
                         Trivia(
                             name = EndOfLine,
-                            scanner =
-                                Choice([Atom("\n"), Sequence([Atom("\r"), Optional(Atom("\n"))])])
+                            scanner = Sequence([Optional(Atom("\r")), Atom("\n")])
                         ),
                         Trivia(
                             name = SingleLineComment,
@@ -443,10 +395,7 @@ codegen_language_macros::compile!(Language(
                         Trivia(
                             name = MultiLineComment,
                             scanner = Sequence([
-                                TrailingContext(
-                                    scanner = Atom("/*"),
-                                    not_followed_by = Sequence([Atom("*"), Not(['/'])])
-                                ),
+                                TrailingContext(scanner = Atom("/*"), not_followed_by = Atom("*")),
                                 ZeroOrMore(Choice([
                                     Not(['*']),
                                     TrailingContext(
@@ -464,7 +413,7 @@ codegen_language_macros::compile!(Language(
                         Trivia(
                             name = MultiLineNatSpecComment,
                             scanner = Sequence([
-                                TrailingContext(scanner = Atom("/**"), not_followed_by = Atom("/")),
+                                Atom("/**"),
                                 ZeroOrMore(Choice([
                                     Not(['*']),
                                     TrailingContext(
@@ -1258,7 +1207,6 @@ codegen_language_macros::compile!(Language(
                             name = OverrideKeyword,
                             identifier = Identifier,
                             definitions = [KeywordDefinition(
-                                enabled = From("0.6.0"),
                                 reserved = From("0.5.0"),
                                 value = Atom("override")
                             )]
@@ -1304,10 +1252,7 @@ codegen_language_macros::compile!(Language(
                         Keyword(
                             name = PureKeyword,
                             identifier = Identifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.4.16"),
-                                value = Atom("pure")
-                            )]
+                            definitions = [KeywordDefinition(value = Atom("pure"))]
                         ),
                         Keyword(
                             name = ReceiveKeyword,
@@ -1811,10 +1756,7 @@ codegen_language_macros::compile!(Language(
                         Keyword(
                             name = ViewKeyword,
                             identifier = Identifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.4.16"),
-                                value = Atom("view")
-                            )]
+                            definitions = [KeywordDefinition(value = Atom("view"))]
                         ),
                         Keyword(
                             name = VirtualKeyword,
@@ -2081,7 +2023,7 @@ codegen_language_macros::compile!(Language(
                                 name = Required(Identifier),
                                 inheritence = Optional(reference = InheritanceSpecifier),
                                 open_brace = Required(OpenBrace),
-                                members = Required(ContractMembers),
+                                members = Optional(reference = ContractMembers),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
@@ -2104,11 +2046,7 @@ codegen_language_macros::compile!(Language(
                                 arguments = Optional(reference = ArgumentsDeclaration)
                             )
                         ),
-                        Repeated(
-                            name = ContractMembers,
-                            reference = ContractMember,
-                            allow_empty = true
-                        ),
+                        Repeated(name = ContractMembers, reference = ContractMember),
                         Enum(
                             name = ContractMember,
                             variants = [
@@ -2158,15 +2096,11 @@ codegen_language_macros::compile!(Language(
                                 name = Required(Identifier),
                                 inheritence = Optional(reference = InheritanceSpecifier),
                                 open_brace = Required(OpenBrace),
-                                members = Required(InterfaceMembers),
+                                members = Optional(reference = InterfaceMembers),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
-                        Repeated(
-                            name = InterfaceMembers,
-                            reference = ContractMember,
-                            allow_empty = true
-                        )
+                        Repeated(name = InterfaceMembers, reference = ContractMember)
                     ]
                 ),
                 Topic(
@@ -2182,15 +2116,11 @@ codegen_language_macros::compile!(Language(
                                 library_keyword = Required(LibraryKeyword),
                                 name = Required(Identifier),
                                 open_brace = Required(OpenBrace),
-                                members = Required(LibraryMembers),
+                                members = Optional(reference = LibraryMembers),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
-                        Repeated(
-                            name = LibraryMembers,
-                            reference = ContractMember,
-                            allow_empty = true
-                        )
+                        Repeated(name = LibraryMembers, reference = ContractMember)
                     ]
                 ),
                 Topic(
@@ -2206,15 +2136,11 @@ codegen_language_macros::compile!(Language(
                                 struct_keyword = Required(StructKeyword),
                                 name = Required(Identifier),
                                 open_brace = Required(OpenBrace),
-                                members = Required(StructMembers),
+                                members = Optional(reference = StructMembers),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
-                        Repeated(
-                            name = StructMembers,
-                            reference = StructMember,
-                            allow_empty = true
-                        ),
+                        Repeated(name = StructMembers, reference = StructMember),
                         Struct(
                             name = StructMember,
                             error_recovery = FieldsErrorRecovery(terminator = semicolon),
@@ -2239,15 +2165,14 @@ codegen_language_macros::compile!(Language(
                                 enum_keyword = Required(EnumKeyword),
                                 name = Required(Identifier),
                                 open_brace = Required(OpenBrace),
-                                members = Required(EnumMembers),
+                                members = Optional(reference = EnumMembers),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
                         Separated(
                             name = EnumMembers,
                             reference = Identifier,
-                            separator = Comma,
-                            allow_empty = true
+                            separator = Comma
                         )
                     ]
                 ),
@@ -2275,7 +2200,7 @@ codegen_language_macros::compile!(Language(
                             error_recovery = FieldsErrorRecovery(terminator = semicolon),
                             fields = (
                                 type_name = Required(TypeName),
-                                attributes = Required(StateVariableAttributes),
+                                attributes = Optional(reference = StateVariableAttributes),
                                 name = Required(Identifier),
                                 value = Optional(reference = StateVariableDefinitionValue),
                                 semicolon = Required(Semicolon)
@@ -2287,13 +2212,12 @@ codegen_language_macros::compile!(Language(
                         ),
                         Repeated(
                             name = StateVariableAttributes,
-                            reference = StateVariableAttribute,
-                            allow_empty = true
+                            reference = StateVariableAttribute
                         ),
                         Enum(
                             name = StateVariableAttribute,
                             variants = [
-                                EnumVariant(reference = OverrideSpecifier, enabled = From("0.6.0")),
+                                EnumVariant(reference = OverrideSpecifier),
                                 EnumVariant(reference = ConstantKeyword),
                                 EnumVariant(reference = InternalKeyword),
                                 EnumVariant(reference = PrivateKeyword),
@@ -2312,7 +2236,7 @@ codegen_language_macros::compile!(Language(
                                 function_keyword = Required(FunctionKeyword),
                                 name = Required(FunctionName),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(FunctionAttributes),
+                                attributes = Optional(reference = FunctionAttributes),
                                 returns = Optional(reference = ReturnsDeclaration),
                                 body = Required(FunctionBody)
                             )
@@ -2333,16 +2257,11 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_paren = Required(OpenParen),
-                                parameters = Required(Parameters),
+                                parameters = Optional(reference = Parameters),
                                 close_paren = Required(CloseParen)
                             )
                         ),
-                        Separated(
-                            name = Parameters,
-                            reference = Parameter,
-                            separator = Comma,
-                            allow_empty = true
-                        ),
+                        Separated(name = Parameters, reference = Parameter, separator = Comma),
                         Struct(
                             name = Parameter,
                             fields = (
@@ -2351,30 +2270,25 @@ codegen_language_macros::compile!(Language(
                                 name = Optional(reference = Identifier)
                             )
                         ),
-                        Repeated(
-                            name = FunctionAttributes,
-                            reference = FunctionAttribute,
-                            allow_empty = true
-                        ),
+                        Repeated(name = FunctionAttributes, reference = FunctionAttribute),
                         Enum(
                             name = FunctionAttribute,
                             variants = [
                                 EnumVariant(reference = ModifierInvocation),
-                                EnumVariant(reference = OverrideSpecifier, enabled = From("0.6.0")),
+                                EnumVariant(reference = OverrideSpecifier),
                                 EnumVariant(reference = ConstantKeyword, enabled = Till("0.5.0")),
                                 EnumVariant(reference = ExternalKeyword),
                                 EnumVariant(reference = InternalKeyword),
                                 EnumVariant(reference = PayableKeyword),
                                 EnumVariant(reference = PrivateKeyword),
                                 EnumVariant(reference = PublicKeyword),
-                                EnumVariant(reference = PureKeyword, enabled = From("0.4.16")),
-                                EnumVariant(reference = ViewKeyword, enabled = From("0.4.16")),
+                                EnumVariant(reference = PureKeyword),
+                                EnumVariant(reference = ViewKeyword),
                                 EnumVariant(reference = VirtualKeyword, enabled = From("0.6.0"))
                             ]
                         ),
                         Struct(
                             name = OverrideSpecifier,
-                            enabled = From("0.6.0"),
                             fields = (
                                 override_keyword = Required(OverrideKeyword),
                                 overridden = Optional(reference = OverridePathsDeclaration)
@@ -2382,7 +2296,6 @@ codegen_language_macros::compile!(Language(
                         ),
                         Struct(
                             name = OverridePathsDeclaration,
-                            enabled = From("0.6.0"),
                             error_recovery = FieldsErrorRecovery(
                                 delimiters =
                                     FieldDelimiters(open = open_paren, close = close_paren)
@@ -2396,8 +2309,7 @@ codegen_language_macros::compile!(Language(
                         Separated(
                             name = OverridePaths,
                             reference = IdentifierPath,
-                            separator = Comma,
-                            enabled = From("0.6.0")
+                            separator = Comma
                         ),
                         Struct(
                             name = ReturnsDeclaration,
@@ -2419,15 +2331,14 @@ codegen_language_macros::compile!(Language(
                             fields = (
                                 constructor_keyword = Required(ConstructorKeyword),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(ConstructorAttributes),
+                                attributes = Optional(reference = ConstructorAttributes),
                                 body = Required(Block)
                             )
                         ),
                         Repeated(
                             name = ConstructorAttributes,
                             reference = ConstructorAttribute,
-                            enabled = From("0.4.22"),
-                            allow_empty = true
+                            enabled = From("0.4.22")
                         ),
                         Enum(
                             name = ConstructorAttribute,
@@ -2435,16 +2346,8 @@ codegen_language_macros::compile!(Language(
                             variants = [
                                 EnumVariant(reference = ModifierInvocation),
                                 EnumVariant(reference = InternalKeyword),
-                                EnumVariant(
-                                    reference = OverrideKeyword,
-                                    enabled = Range(from = "0.6.0", till = "0.6.7")
-                                ),
                                 EnumVariant(reference = PayableKeyword),
-                                EnumVariant(reference = PublicKeyword),
-                                EnumVariant(
-                                    reference = VirtualKeyword,
-                                    enabled = Range(from = "0.6.0", till = "0.6.7")
-                                )
+                                EnumVariant(reference = PublicKeyword)
                             ]
                         ),
                         Struct(
@@ -2453,35 +2356,25 @@ codegen_language_macros::compile!(Language(
                             fields = (
                                 function_keyword = Required(FunctionKeyword),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(UnnamedFunctionAttributes),
+                                attributes = Optional(reference = UnnamedFunctionAttributes),
                                 body = Required(FunctionBody)
                             )
                         ),
                         Repeated(
                             name = UnnamedFunctionAttributes,
                             reference = UnnamedFunctionAttribute,
-                            enabled = Till("0.6.0"),
-                            allow_empty = true
+                            enabled = Till("0.6.0")
                         ),
                         Enum(
                             name = UnnamedFunctionAttribute,
                             enabled = Till("0.6.0"),
                             variants = [
                                 EnumVariant(reference = ModifierInvocation),
-                                EnumVariant(reference = ConstantKeyword, enabled = Till("0.5.0")),
+                                EnumVariant(reference = OverrideSpecifier),
                                 EnumVariant(reference = ExternalKeyword),
-                                EnumVariant(reference = InternalKeyword, enabled = Till("0.5.0")),
                                 EnumVariant(reference = PayableKeyword),
-                                EnumVariant(reference = PrivateKeyword, enabled = Till("0.5.0")),
-                                EnumVariant(reference = PublicKeyword, enabled = Till("0.5.0")),
-                                EnumVariant(
-                                    reference = PureKeyword,
-                                    enabled = Range(from = "0.4.16", till = "0.6.0")
-                                ),
-                                EnumVariant(
-                                    reference = ViewKeyword,
-                                    enabled = Range(from = "0.4.16", till = "0.6.0")
-                                )
+                                EnumVariant(reference = PureKeyword),
+                                EnumVariant(reference = ViewKeyword)
                             ]
                         ),
                         Struct(
@@ -2490,7 +2383,7 @@ codegen_language_macros::compile!(Language(
                             fields = (
                                 fallback_keyword = Required(FallbackKeyword),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(FallbackFunctionAttributes),
+                                attributes = Optional(reference = FallbackFunctionAttributes),
                                 returns = Optional(reference = ReturnsDeclaration),
                                 body = Required(FunctionBody)
                             )
@@ -2498,8 +2391,7 @@ codegen_language_macros::compile!(Language(
                         Repeated(
                             name = FallbackFunctionAttributes,
                             reference = FallbackFunctionAttribute,
-                            enabled = From("0.6.0"),
-                            allow_empty = true
+                            enabled = From("0.6.0")
                         ),
                         Enum(
                             name = FallbackFunctionAttribute,
@@ -2520,15 +2412,14 @@ codegen_language_macros::compile!(Language(
                             fields = (
                                 receive_keyword = Required(ReceiveKeyword),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(ReceiveFunctionAttributes),
+                                attributes = Optional(reference = ReceiveFunctionAttributes),
                                 body = Required(FunctionBody)
                             )
                         ),
                         Repeated(
                             name = ReceiveFunctionAttributes,
                             reference = ReceiveFunctionAttribute,
-                            enabled = From("0.6.0"),
-                            allow_empty = true
+                            enabled = From("0.6.0")
                         ),
                         Enum(
                             name = ReceiveFunctionAttribute,
@@ -2552,19 +2443,15 @@ codegen_language_macros::compile!(Language(
                                 modifier_keyword = Required(ModifierKeyword),
                                 name = Required(Identifier),
                                 parameters = Optional(reference = ParametersDeclaration),
-                                attributes = Required(ModifierAttributes),
+                                attributes = Optional(reference = ModifierAttributes),
                                 body = Required(FunctionBody)
                             )
                         ),
-                        Repeated(
-                            name = ModifierAttributes,
-                            reference = ModifierAttribute,
-                            allow_empty = true
-                        ),
+                        Repeated(name = ModifierAttributes, reference = ModifierAttribute),
                         Enum(
                             name = ModifierAttribute,
                             variants = [
-                                EnumVariant(reference = OverrideSpecifier, enabled = From("0.6.0")),
+                                EnumVariant(reference = OverrideSpecifier),
                                 EnumVariant(reference = VirtualKeyword, enabled = From("0.6.0"))
                             ]
                         ),
@@ -2599,15 +2486,14 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_paren = Required(OpenParen),
-                                parameters = Required(EventParameters),
+                                parameters = Optional(reference = EventParameters),
                                 close_paren = Required(CloseParen)
                             )
                         ),
                         Separated(
                             name = EventParameters,
                             reference = EventParameter,
-                            separator = Comma,
-                            allow_empty = true
+                            separator = Comma
                         ),
                         Struct(
                             name = EventParameter,
@@ -2657,7 +2543,7 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_paren = Required(OpenParen),
-                                parameters = Required(ErrorParameters),
+                                parameters = Optional(reference = ErrorParameters),
                                 close_paren = Required(CloseParen)
                             )
                         ),
@@ -2665,8 +2551,7 @@ codegen_language_macros::compile!(Language(
                             name = ErrorParameters,
                             reference = ErrorParameter,
                             separator = Comma,
-                            enabled = From("0.8.4"),
-                            allow_empty = true
+                            enabled = From("0.8.4")
                         ),
                         Struct(
                             name = ErrorParameter,
@@ -2717,14 +2602,13 @@ codegen_language_macros::compile!(Language(
                             fields = (
                                 function_keyword = Required(FunctionKeyword),
                                 parameters = Required(ParametersDeclaration),
-                                attributes = Required(FunctionTypeAttributes),
+                                attributes = Optional(reference = FunctionTypeAttributes),
                                 returns = Optional(reference = ReturnsDeclaration)
                             )
                         ),
                         Repeated(
                             name = FunctionTypeAttributes,
-                            reference = FunctionTypeAttribute,
-                            allow_empty = true
+                            reference = FunctionTypeAttribute
                         ),
                         Enum(
                             name = FunctionTypeAttribute,
@@ -2733,9 +2617,8 @@ codegen_language_macros::compile!(Language(
                                 EnumVariant(reference = ExternalKeyword),
                                 EnumVariant(reference = PrivateKeyword),
                                 EnumVariant(reference = PublicKeyword),
-                                EnumVariant(reference = ConstantKeyword, enabled = Till("0.5.0")),
-                                EnumVariant(reference = PureKeyword, enabled = From("0.4.16")),
-                                EnumVariant(reference = ViewKeyword, enabled = From("0.4.16")),
+                                EnumVariant(reference = PureKeyword),
+                                EnumVariant(reference = ViewKeyword),
                                 EnumVariant(reference = PayableKeyword)
                             ]
                         ),
@@ -2819,11 +2702,11 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_brace = Required(OpenBrace),
-                                statements = Required(Statements),
+                                statements = Optional(reference = Statements),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
-                        Repeated(name = Statements, reference = Statement, allow_empty = true),
+                        Repeated(name = Statements, reference = Statement),
                         Enum(
                             name = Statement,
                             variants = [
@@ -2838,6 +2721,7 @@ codegen_language_macros::compile!(Language(
                                 EnumVariant(reference = DoWhileStatement),
                                 EnumVariant(reference = ContinueStatement),
                                 EnumVariant(reference = BreakStatement),
+                                EnumVariant(reference = DeleteStatement),
                                 EnumVariant(reference = ReturnStatement),
                                 EnumVariant(reference = ThrowStatement, enabled = Till("0.5.0")),
                                 EnumVariant(reference = EmitStatement, enabled = From("0.4.21")),
@@ -2868,7 +2752,7 @@ codegen_language_macros::compile!(Language(
                             name = AssemblyStatement,
                             fields = (
                                 assembly_keyword = Required(AssemblyKeyword),
-                                label = Optional(reference = StringLiteral),
+                                label = Optional(reference = AsciiStringLiteral),
                                 flags = Optional(reference = AssemblyFlagsDeclaration),
                                 body = Required(YulBlock)
                             )
@@ -2887,7 +2771,7 @@ codegen_language_macros::compile!(Language(
                         ),
                         Separated(
                             name = AssemblyFlags,
-                            reference = StringLiteral,
+                            reference = AsciiStringLiteral,
                             separator = Comma
                         )
                     ]
@@ -2903,8 +2787,6 @@ codegen_language_macros::compile!(Language(
                                     FieldDelimiters(open = open_paren, close = close_paren)
                             ),
                             fields = (
-                                var_keyword =
-                                    Optional(reference = VarKeyword, enabled = Till("0.5.0")),
                                 open_paren = Required(OpenParen),
                                 elements = Required(TupleDeconstructionElements),
                                 close_paren = Required(CloseParen),
@@ -3097,6 +2979,15 @@ codegen_language_macros::compile!(Language(
                                 emit_keyword = Required(EmitKeyword),
                                 event = Required(IdentifierPath),
                                 arguments = Required(ArgumentsDeclaration),
+                                semicolon = Required(Semicolon)
+                            )
+                        ),
+                        Struct(
+                            name = DeleteStatement,
+                            error_recovery = FieldsErrorRecovery(terminator = semicolon),
+                            fields = (
+                                delete_keyword = Required(DeleteKeyword),
+                                expression = Required(Expression),
                                 semicolon = Required(Semicolon)
                             )
                         )
@@ -3412,10 +3303,6 @@ codegen_language_macros::compile!(Language(
                                             model = Prefix,
                                             enabled = Till("0.5.0"),
                                             fields = (operator = Required(Plus))
-                                        ),
-                                        PrecedenceOperator(
-                                            model = Prefix,
-                                            fields = (operator = Required(DeleteKeyword))
                                         )
                                     ]
                                 ),
@@ -3423,29 +3310,12 @@ codegen_language_macros::compile!(Language(
                                     name = FunctionCallExpression,
                                     operators = [PrecedenceOperator(
                                         model = Postfix,
-                                        fields = (arguments = Required(ArgumentsDeclaration))
-                                    )]
-                                ),
-                                PrecedenceExpression(
-                                    name = CallOptionsExpression,
-                                    operators = [PrecedenceOperator(
-                                        model = Postfix,
-                                        enabled = From("0.6.2"),
-                                        error_recovery = FieldsErrorRecovery(
-                                            delimiters = FieldDelimiters(
-                                                open = open_brace,
-                                                close = close_brace,
-                                                // NOTE: Despite `CallOptions` requiring at least one element,
-                                                // we can only recover if we found at least two tokens (`ident:`)
-                                                // in the body, as this may be otherwise ambiguous with
-                                                // `try <EXPR> { func() } catch {}`.
-                                                tokens_matched_acceptance_threshold = 2
-                                            )
-                                        ),
                                         fields = (
-                                            open_brace = Required(OpenBrace),
-                                            options = Required(CallOptions),
-                                            close_brace = Required(CloseBrace)
+                                            options = Optional(
+                                                reference = FunctionCallOptions,
+                                                enabled = From("0.6.2")
+                                            ),
+                                            arguments = Required(ArgumentsDeclaration)
                                         )
                                     )]
                                 ),
@@ -3519,6 +3389,20 @@ codegen_language_macros::compile!(Language(
                     title = "Function Calls",
                     items = [
                         Enum(
+                            name = FunctionCallOptions,
+                            enabled = From("0.6.2"),
+                            variants = [
+                                EnumVariant(
+                                    reference = NamedArgumentGroups,
+                                    enabled = Range(from = "0.6.2", till = "0.8.0")
+                                ),
+                                EnumVariant(
+                                    reference = NamedArgumentGroup,
+                                    enabled = From("0.8.0")
+                                )
+                            ]
+                        ),
+                        Enum(
                             name = ArgumentsDeclaration,
                             variants = [
                                 EnumVariant(reference = PositionalArgumentsDeclaration),
@@ -3533,15 +3417,14 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_paren = Required(OpenParen),
-                                arguments = Required(PositionalArguments),
+                                arguments = Optional(reference = PositionalArguments),
                                 close_paren = Required(CloseParen)
                             )
                         ),
                         Separated(
                             name = PositionalArguments,
                             reference = Expression,
-                            separator = Comma,
-                            allow_empty = true
+                            separator = Comma
                         ),
                         Struct(
                             name = NamedArgumentsDeclaration,
@@ -3555,6 +3438,11 @@ codegen_language_macros::compile!(Language(
                                 close_paren = Required(CloseParen)
                             )
                         ),
+                        Repeated(
+                            name = NamedArgumentGroups,
+                            reference = NamedArgumentGroup,
+                            enabled = Range(from = "0.6.2", till = "0.8.0")
+                        ),
                         Struct(
                             name = NamedArgumentGroup,
                             error_recovery = FieldsErrorRecovery(
@@ -3563,23 +3451,14 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_brace = Required(OpenBrace),
-                                arguments = Required(NamedArguments),
+                                arguments = Optional(reference = NamedArguments),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
                         Separated(
                             name = NamedArguments,
                             reference = NamedArgument,
-                            separator = Comma,
-                            allow_empty = true
-                        ),
-                        Separated(
-                            name = CallOptions,
-                            reference = NamedArgument,
-                            separator = Comma,
-                            enabled = From("0.6.2"),
-                            // These cannot be empty as they're ambiguous with `try <EXPR> {} catch {}`
-                            allow_empty = false
+                            separator = Comma
                         ),
                         Struct(
                             name = NamedArgument,
@@ -3709,18 +3588,7 @@ codegen_language_macros::compile!(Language(
                         Token(
                             name = DecimalLiteral,
                             definitions = [
-                                // A dot and a fraction (without an integer) is enabled in all versions:
-                                TokenDefinition(
-                                    scanner = TrailingContext(
-                                        scanner = Sequence([
-                                            Atom("."),
-                                            Fragment(DecimalDigits),
-                                            Optional(Fragment(DecimalExponent))
-                                        ]),
-                                        not_followed_by = Fragment(IdentifierStart)
-                                    )
-                                ),
-                                // A bare integer (without a dot or a fraction) is enabled in all versions:
+                                // An integer (without a dot or a fraction) is enabled in all versions:
                                 TokenDefinition(
                                     scanner = TrailingContext(
                                         scanner = Sequence([
@@ -3733,7 +3601,7 @@ codegen_language_macros::compile!(Language(
                                         not_followed_by = Fragment(IdentifierStart)
                                     )
                                 ),
-                                // Till 0.5.0, the following lone dot was considered a part of the literal:
+                                // An integer and a dot (without a fraction) is disabled in "0.5.0"
                                 TokenDefinition(
                                     enabled = Till("0.5.0"),
                                     scanner = TrailingContext(
@@ -3748,12 +3616,10 @@ codegen_language_macros::compile!(Language(
                                         not_followed_by = Fragment(IdentifierStart)
                                     )
                                 ),
-                                // As well as the full form of digits followed by a dot followed by digits...
+                                // A dot and a fraction (without an integer) is enabled in all versions:
                                 TokenDefinition(
-                                    enabled = Till("0.5.0"),
                                     scanner = TrailingContext(
                                         scanner = Sequence([
-                                            Fragment(DecimalDigits),
                                             Atom("."),
                                             Fragment(DecimalDigits),
                                             Optional(Fragment(DecimalExponent))
@@ -3761,17 +3627,13 @@ codegen_language_macros::compile!(Language(
                                         not_followed_by = Fragment(IdentifierStart)
                                     )
                                 ),
-                                // ...both of which was subsumed by a more general form that only included
-                                // the dot if it was followed by a fraction:
+                                // An integer, a dot, and a fraction is enabled in all versions:
                                 TokenDefinition(
-                                    enabled = From("0.5.0"),
                                     scanner = TrailingContext(
                                         scanner = Sequence([
                                             Fragment(DecimalDigits),
-                                            Optional(Sequence([
-                                                Atom("."),
-                                                Fragment(DecimalDigits)
-                                            ])),
+                                            Atom("."),
+                                            Fragment(DecimalDigits),
                                             Optional(Fragment(DecimalExponent))
                                         ]),
                                         not_followed_by = Fragment(IdentifierStart)
@@ -3826,146 +3688,37 @@ codegen_language_macros::compile!(Language(
                         Enum(
                             name = StringExpression,
                             variants = [
-                                EnumVariant(reference = StringLiteral, enabled = Till("0.5.14")),
-                                EnumVariant(reference = StringLiterals, enabled = From("0.5.14")),
-                                EnumVariant(reference = HexStringLiteral, enabled = Till("0.5.14")),
-                                EnumVariant(
-                                    reference = HexStringLiterals,
-                                    enabled = From("0.5.14")
-                                ),
+                                EnumVariant(reference = HexStringLiterals),
+                                EnumVariant(reference = AsciiStringLiterals),
                                 EnumVariant(
                                     reference = UnicodeStringLiterals,
                                     enabled = From("0.7.0")
                                 )
                             ]
                         ),
-                        Repeated(
-                            name = StringLiterals,
-                            reference = StringLiteral,
-                            enabled = From("0.5.14")
-                        ),
-                        Enum(
-                            name = StringLiteral,
-                            variants = [
-                                EnumVariant(reference = SingleQuotedStringLiteral),
-                                EnumVariant(reference = DoubleQuotedStringLiteral)
-                            ]
-                        ),
+                        Repeated(name = HexStringLiterals, reference = HexStringLiteral),
                         Token(
-                            name = SingleQuotedStringLiteral,
-                            definitions = [
-                                // Allows unicode characters and arbitrary escape sequences:
-                                TokenDefinition(
-                                    enabled = Till("0.4.25"),
-                                    scanner = Sequence([
-                                        Atom("'"),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequenceArbitrary),
-                                            Not(['\'', '\\', '\r', '\n'])
-                                        ])),
-                                        Atom("'")
-                                    ])
-                                ),
-                                // Allows unicode characters but allows only known ASCII escape sequences:
-                                TokenDefinition(
-                                    enabled = Range(from = "0.4.25", till = "0.7.0"),
-                                    scanner = Sequence([
-                                        Atom("'"),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequence),
-                                            Not(['\'', '\\', '\r', '\n'])
-                                        ])),
-                                        Atom("'")
-                                    ])
-                                ),
-                                // Rejects unicode characters:
-                                TokenDefinition(
-                                    scanner = Sequence([
-                                        Atom("'"),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequence),
-                                            Range(inclusive_start = ' ', inclusive_end = '&'),
-                                            Range(inclusive_start = '(', inclusive_end = '['),
-                                            Range(inclusive_start = ']', inclusive_end = '~')
-                                        ])),
-                                        Atom("'")
-                                    ])
-                                )
-                            ]
-                        ),
-                        Token(
-                            name = DoubleQuotedStringLiteral,
-                            definitions = [
-                                // Allows unicode characters and arbitrary escape sequences:
-                                TokenDefinition(
-                                    enabled = Till("0.4.25"),
-                                    scanner = Sequence([
-                                        Atom("\""),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequenceArbitrary),
-                                            Not(['"', '\\', '\r', '\n'])
-                                        ])),
-                                        Atom("\"")
-                                    ])
-                                ),
-                                // Allows unicode characters but allows only known ASCII escape sequences:
-                                TokenDefinition(
-                                    enabled = Range(from = "0.4.25", till = "0.7.0"),
-                                    scanner = Sequence([
-                                        Atom("\""),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequence),
-                                            Not(['"', '\\', '\r', '\n'])
-                                        ])),
-                                        Atom("\"")
-                                    ])
-                                ),
-                                // Rejects unicode characters:
-                                TokenDefinition(
-                                    scanner = Sequence([
-                                        Atom("\""),
-                                        ZeroOrMore(Choice([
-                                            Fragment(EscapeSequence),
-                                            Range(inclusive_start = ' ', inclusive_end = '!'),
-                                            Range(inclusive_start = '#', inclusive_end = '['),
-                                            Range(inclusive_start = ']', inclusive_end = '~')
-                                        ])),
-                                        Atom("\"")
-                                    ])
-                                )
-                            ]
-                        ),
-                        Repeated(
-                            name = HexStringLiterals,
-                            reference = HexStringLiteral,
-                            enabled = From("0.5.14")
-                        ),
-                        Enum(
                             name = HexStringLiteral,
-                            variants = [
-                                EnumVariant(reference = SingleQuotedHexStringLiteral),
-                                EnumVariant(reference = DoubleQuotedHexStringLiteral)
+                            definitions = [
+                                TokenDefinition(scanner = Fragment(SingleQuotedHexStringLiteral)),
+                                TokenDefinition(scanner = Fragment(DoubleQuotedHexStringLiteral))
                             ]
                         ),
-                        Token(
+                        Fragment(
                             name = SingleQuotedHexStringLiteral,
-                            definitions = [TokenDefinition(
-                                scanner = Sequence([
-                                    Atom("hex'"),
-                                    Optional(Fragment(HexStringContents)),
-                                    Atom("'")
-                                ])
-                            )]
+                            scanner = Sequence([
+                                Atom("hex'"),
+                                Optional(Fragment(HexStringContents)),
+                                Atom("'")
+                            ])
                         ),
-                        Token(
+                        Fragment(
                             name = DoubleQuotedHexStringLiteral,
-                            definitions = [TokenDefinition(
-                                scanner = Sequence([
-                                    Atom("hex\""),
-                                    Optional(Fragment(HexStringContents)),
-                                    Atom("\"")
-                                ])
-                            )]
+                            scanner = Sequence([
+                                Atom("hex\""),
+                                Optional(Fragment(HexStringContents)),
+                                Atom("\"")
+                            ])
                         ),
                         Fragment(
                             name = HexStringContents,
@@ -3987,46 +3740,81 @@ codegen_language_macros::compile!(Language(
                                 Range(inclusive_start = 'A', inclusive_end = 'F')
                             ])
                         ),
+                        Repeated(name = AsciiStringLiterals, reference = AsciiStringLiteral),
+                        Token(
+                            name = AsciiStringLiteral,
+                            definitions = [
+                                TokenDefinition(scanner = Fragment(SingleQuotedAsciiStringLiteral)),
+                                TokenDefinition(scanner = Fragment(DoubleQuotedAsciiStringLiteral))
+                            ]
+                        ),
+                        Fragment(
+                            name = SingleQuotedAsciiStringLiteral,
+                            scanner = Sequence([
+                                Atom("'"),
+                                ZeroOrMore(Choice([
+                                    Fragment(EscapeSequence),
+                                    Range(inclusive_start = ' ', inclusive_end = '&'),
+                                    Range(inclusive_start = '(', inclusive_end = '['),
+                                    Range(inclusive_start = ']', inclusive_end = '~')
+                                ])),
+                                Atom("'")
+                            ])
+                        ),
+                        Fragment(
+                            name = DoubleQuotedAsciiStringLiteral,
+                            scanner = Sequence([
+                                Atom("\""),
+                                ZeroOrMore(Choice([
+                                    Fragment(EscapeSequence),
+                                    Range(inclusive_start = ' ', inclusive_end = '!'),
+                                    Range(inclusive_start = '#', inclusive_end = '['),
+                                    Range(inclusive_start = ']', inclusive_end = '~')
+                                ])),
+                                Atom("\"")
+                            ])
+                        ),
                         Repeated(
                             name = UnicodeStringLiterals,
                             reference = UnicodeStringLiteral,
                             enabled = From("0.7.0")
                         ),
-                        Enum(
+                        Token(
                             name = UnicodeStringLiteral,
-                            enabled = From("0.7.0"),
-                            variants = [
-                                EnumVariant(reference = SingleQuotedUnicodeStringLiteral),
-                                EnumVariant(reference = DoubleQuotedUnicodeStringLiteral)
+                            definitions = [
+                                TokenDefinition(
+                                    enabled = From("0.7.0"),
+                                    scanner = Fragment(SingleQuotedUnicodeStringLiteral)
+                                ),
+                                TokenDefinition(
+                                    enabled = From("0.7.0"),
+                                    scanner = Fragment(DoubleQuotedUnicodeStringLiteral)
+                                )
                             ]
                         ),
-                        Token(
+                        Fragment(
                             name = SingleQuotedUnicodeStringLiteral,
-                            definitions = [TokenDefinition(
-                                enabled = From("0.7.0"),
-                                scanner = Sequence([
-                                    Atom("unicode'"),
-                                    ZeroOrMore(Choice([
-                                        Fragment(EscapeSequence),
-                                        Not(['\'', '\\', '\r', '\n'])
-                                    ])),
-                                    Atom("'")
-                                ])
-                            )]
+                            enabled = From("0.7.0"),
+                            scanner = Sequence([
+                                Atom("unicode'"),
+                                ZeroOrMore(Choice([
+                                    Fragment(EscapeSequence),
+                                    Not(['\'', '\\', '\r', '\n'])
+                                ])),
+                                Atom("'")
+                            ])
                         ),
-                        Token(
+                        Fragment(
                             name = DoubleQuotedUnicodeStringLiteral,
-                            definitions = [TokenDefinition(
-                                enabled = From("0.7.0"),
-                                scanner = Sequence([
-                                    Atom("unicode\""),
-                                    ZeroOrMore(Choice([
-                                        Fragment(EscapeSequence),
-                                        Not(['"', '\\', '\r', '\n'])
-                                    ])),
-                                    Atom("\"")
-                                ])
-                            )]
+                            enabled = From("0.7.0"),
+                            scanner = Sequence([
+                                Atom("unicode\""),
+                                ZeroOrMore(Choice([
+                                    Fragment(EscapeSequence),
+                                    Not(['"', '\\', '\r', '\n'])
+                                ])),
+                                Atom("\"")
+                            ])
                         ),
                         Fragment(
                             name = EscapeSequence,
@@ -4034,20 +3822,6 @@ codegen_language_macros::compile!(Language(
                                 Atom("\\"),
                                 Choice([
                                     Fragment(AsciiEscape),
-                                    Fragment(HexByteEscape),
-                                    Fragment(UnicodeEscape)
-                                ])
-                            ])
-                        ),
-                        Fragment(
-                            name = EscapeSequenceArbitrary,
-                            enabled = Till("0.4.25"),
-                            scanner = Sequence([
-                                Atom("\\"),
-                                Choice([
-                                    // Prior to 0.4.25, it was legal to "escape" any character (incl. unicode),
-                                    // however only the ones from `AsciiEscape` were escaped in practice.
-                                    Not(['x', 'u']),
                                     Fragment(HexByteEscape),
                                     Fragment(UnicodeEscape)
                                 ])
@@ -4062,9 +3836,8 @@ codegen_language_macros::compile!(Language(
                                 Atom("'"),
                                 Atom("\""),
                                 Atom("\\"),
-                                Atom("\r\n"),
-                                Atom("\r"),
-                                Atom("\n")
+                                Atom("\n"),
+                                Atom("\r")
                             ])
                         ),
                         Fragment(
@@ -4097,12 +3870,14 @@ codegen_language_macros::compile!(Language(
                         ),
                         Token(
                             name = Identifier,
-                            definitions = [TokenDefinition(
-                                scanner = Sequence([
-                                    Fragment(IdentifierStart),
-                                    ZeroOrMore(Fragment(IdentifierPart))
-                                ])
-                            )]
+                            definitions = [TokenDefinition(scanner = Fragment(RawIdentifier))]
+                        ),
+                        Fragment(
+                            name = RawIdentifier,
+                            scanner = Sequence([
+                                Fragment(IdentifierStart),
+                                ZeroOrMore(Fragment(IdentifierPart))
+                            ])
                         ),
                         Fragment(
                             name = IdentifierStart,
@@ -4139,15 +3914,11 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_brace = Required(OpenBrace),
-                                statements = Required(YulStatements),
+                                statements = Optional(reference = YulStatements),
                                 close_brace = Required(CloseBrace)
                             )
                         ),
-                        Repeated(
-                            name = YulStatements,
-                            reference = YulStatement,
-                            allow_empty = true
-                        ),
+                        Repeated(name = YulStatements, reference = YulStatement),
                         Enum(
                             name = YulStatement,
                             variants = [
@@ -4161,7 +3932,6 @@ codegen_language_macros::compile!(Language(
                                 EnumVariant(reference = YulLeaveStatement, enabled = From("0.6.0")),
                                 EnumVariant(reference = YulBreakStatement),
                                 EnumVariant(reference = YulContinueStatement),
-                                EnumVariant(reference = YulLabel, enabled = Till("0.5.0")),
                                 EnumVariant(reference = YulExpression)
                             ]
                         ),
@@ -4183,15 +3953,14 @@ codegen_language_macros::compile!(Language(
                             ),
                             fields = (
                                 open_paren = Required(OpenParen),
-                                parameters = Required(YulParameters),
+                                parameters = Optional(reference = YulParameters),
                                 close_paren = Required(CloseParen)
                             )
                         ),
                         Separated(
                             name = YulParameters,
                             reference = YulIdentifier,
-                            separator = Comma,
-                            allow_empty = true
+                            separator = Comma
                         ),
                         Struct(
                             name = YulReturnsDeclaration,
@@ -4209,36 +3978,24 @@ codegen_language_macros::compile!(Language(
                             name = YulVariableDeclarationStatement,
                             fields = (
                                 let_keyword = Required(YulLetKeyword),
-                                names = Required(YulIdentifier),
+                                names = Required(YulIdentifierPaths),
                                 value = Optional(reference = YulVariableDeclarationValue)
                             )
                         ),
                         Struct(
                             name = YulVariableDeclarationValue,
                             fields = (
-                                assignment = Required(YulAssignmentOperator),
+                                colon_equal = Required(ColonEqual),
                                 expression = Required(YulExpression)
                             )
                         ),
                         Struct(
                             name = YulAssignmentStatement,
                             fields = (
-                                names = Required(YulPaths),
-                                assignment = Required(YulAssignmentOperator),
+                                names = Required(YulIdentifierPaths),
+                                colon_equal = Required(ColonEqual),
                                 expression = Required(YulExpression)
                             )
-                        ),
-                        Enum(
-                            name = YulAssignmentOperator,
-                            variants = [
-                                EnumVariant(reference = YulColonAndEqual, enabled = Till("0.5.5")),
-                                EnumVariant(reference = ColonEqual)
-                            ]
-                        ),
-                        Struct(
-                            name = YulColonAndEqual,
-                            enabled = Till("0.5.5"),
-                            fields = (colon = Required(Colon), equal = Required(Equal))
                         ),
                         Struct(
                             name = YulIfStatement,
@@ -4247,6 +4004,19 @@ codegen_language_macros::compile!(Language(
                                 condition = Required(YulExpression),
                                 body = Required(YulBlock)
                             )
+                        ),
+                        Struct(
+                            name = YulLeaveStatement,
+                            enabled = From("0.6.0"),
+                            fields = (leave_keyword = Required(YulLeaveKeyword))
+                        ),
+                        Struct(
+                            name = YulBreakStatement,
+                            fields = (break_keyword = Required(YulBreakKeyword))
+                        ),
+                        Struct(
+                            name = YulContinueStatement,
+                            fields = (continue_keyword = Required(YulContinueKeyword))
                         ),
                         Struct(
                             name = YulForStatement,
@@ -4288,24 +4058,6 @@ codegen_language_macros::compile!(Language(
                                 value = Required(YulLiteral),
                                 body = Required(YulBlock)
                             )
-                        ),
-                        Struct(
-                            name = YulLeaveStatement,
-                            enabled = From("0.6.0"),
-                            fields = (leave_keyword = Required(YulLeaveKeyword))
-                        ),
-                        Struct(
-                            name = YulBreakStatement,
-                            fields = (break_keyword = Required(YulBreakKeyword))
-                        ),
-                        Struct(
-                            name = YulContinueStatement,
-                            fields = (continue_keyword = Required(YulContinueKeyword))
-                        ),
-                        Struct(
-                            name = YulLabel,
-                            enabled = Till("0.5.0"),
-                            fields = (label = Required(YulIdentifier), colon = Required(Colon))
                         )
                     ]
                 ),
@@ -4325,7 +4077,7 @@ codegen_language_macros::compile!(Language(
                                     ),
                                     fields = (
                                         open_paren = Required(OpenParen),
-                                        arguments = Required(YulArguments),
+                                        arguments = Optional(reference = YulArguments),
                                         close_paren = Required(CloseParen)
                                     )
                                 )]
@@ -4333,51 +4085,27 @@ codegen_language_macros::compile!(Language(
                             primary_expressions = [
                                 PrimaryExpression(reference = YulLiteral),
                                 PrimaryExpression(reference = YulBuiltInFunction),
-                                PrimaryExpression(reference = YulPath)
+                                PrimaryExpression(reference = YulIdentifierPath)
                             ]
                         ),
                         Separated(
                             name = YulArguments,
                             reference = YulExpression,
-                            separator = Comma,
-                            allow_empty = true
+                            separator = Comma
                         ),
-                        Separated(name = YulPaths, reference = YulPath, separator = Comma),
                         Separated(
-                            name = YulPath,
-                            reference = YulPathComponent,
-                            separator = Period
+                            name = YulIdentifierPaths,
+                            reference = YulIdentifierPath,
+                            separator = Comma
                         ),
-                        Enum(
-                            name = YulPathComponent,
-                            variants = [
-                                EnumVariant(reference = YulIdentifier),
-                                EnumVariant(
-                                    // Upstream grammar accepts built-ins but only `address` is valid:
-                                    reference = YulAddressKeyword,
-                                    enabled = From("0.8.10")
-                                )
-                            ]
+                        Separated(
+                            name = YulIdentifierPath,
+                            reference = YulIdentifier,
+                            separator = Period
                         ),
                         Token(
                             name = YulIdentifier,
-                            definitions = [
-                                // Dots were allowed specifically between these versions:
-                                TokenDefinition(
-                                    enabled = Range(from = "0.5.8", till = "0.7.0"),
-                                    scanner = Sequence([
-                                        Fragment(IdentifierStart),
-                                        ZeroOrMore(Choice([Fragment(IdentifierPart), Atom(".")]))
-                                    ])
-                                ),
-                                // Otherwise, parse as a regular identifier:
-                                TokenDefinition(
-                                    scanner = Sequence([
-                                        Fragment(IdentifierStart),
-                                        ZeroOrMore(Fragment(IdentifierPart))
-                                    ])
-                                )
-                            ]
+                            definitions = [TokenDefinition(scanner = Fragment(RawIdentifier))]
                         ),
                         Enum(
                             name = YulBuiltInFunction,
@@ -4486,19 +4214,7 @@ codegen_language_macros::compile!(Language(
                                 EnumVariant(
                                     reference = YulPrevRandaoKeyword,
                                     enabled = From("0.8.18")
-                                ),
-                                // 'Cancun' hard-fork updates:
-                                EnumVariant(
-                                    reference = YulBlobBaseFeeKeyword,
-                                    enabled = From("0.8.24")
-                                ),
-                                EnumVariant(
-                                    reference = YulBlobHashKeyword,
-                                    enabled = From("0.8.24")
-                                ),
-                                EnumVariant(reference = YulTLoadKeyword, enabled = From("0.8.24")),
-                                EnumVariant(reference = YulTStoreKeyword, enabled = From("0.8.24")),
-                                EnumVariant(reference = YulMCopyKeyword, enabled = From("0.8.24"))
+                                )
                             ]
                         ),
                         Enum(
@@ -4509,7 +4225,7 @@ codegen_language_macros::compile!(Language(
                                 EnumVariant(reference = YulDecimalLiteral),
                                 EnumVariant(reference = YulHexLiteral),
                                 EnumVariant(reference = HexStringLiteral),
-                                EnumVariant(reference = StringLiteral)
+                                EnumVariant(reference = AsciiStringLiteral)
                             ]
                         ),
                         Token(
@@ -4650,24 +4366,6 @@ codegen_language_macros::compile!(Language(
                                 enabled = From("0.8.7"),
                                 reserved = From("0.8.7"),
                                 value = Atom("basefee")
-                            )]
-                        ),
-                        Keyword(
-                            name = YulBlobBaseFeeKeyword,
-                            identifier = YulIdentifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.8.24"),
-                                reserved = From("0.8.24"),
-                                value = Atom("blobbasefee")
-                            )]
-                        ),
-                        Keyword(
-                            name = YulBlobHashKeyword,
-                            identifier = YulIdentifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.8.24"),
-                                reserved = From("0.8.24"),
-                                value = Atom("blobhash")
                             )]
                         ),
                         Keyword(
@@ -5631,15 +5329,6 @@ codegen_language_macros::compile!(Language(
                             )]
                         ),
                         Keyword(
-                            name = YulMCopyKeyword,
-                            identifier = YulIdentifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.8.24"),
-                                reserved = From("0.8.24"),
-                                value = Atom("mcopy")
-                            )]
-                        ),
-                        Keyword(
                             name = YulMLoadKeyword,
                             identifier = YulIdentifier,
                             definitions = [KeywordDefinition(value = Atom("mload"))]
@@ -6101,27 +5790,9 @@ codegen_language_macros::compile!(Language(
                             )]
                         ),
                         Keyword(
-                            name = YulTLoadKeyword,
-                            identifier = YulIdentifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.8.24"),
-                                reserved = From("0.8.24"),
-                                value = Atom("tload")
-                            )]
-                        ),
-                        Keyword(
                             name = YulTrueKeyword,
                             identifier = YulIdentifier,
                             definitions = [KeywordDefinition(value = Atom("true"))]
-                        ),
-                        Keyword(
-                            name = YulTStoreKeyword,
-                            identifier = YulIdentifier,
-                            definitions = [KeywordDefinition(
-                                enabled = From("0.8.24"),
-                                reserved = From("0.8.24"),
-                                value = Atom("tstore")
-                            )]
                         ),
                         Keyword(
                             name = YulTryKeyword,
@@ -6582,11 +6253,5 @@ codegen_language_macros::compile!(Language(
                 )
             ]
         )
-    ],
-    queries = (
-        // TODO(#554): replace with real queries:
-        query_one = "query 1 code",
-        query_two = "query 2 code",
-        query_three = "query 3 code"
-    )
+    ]
 ));

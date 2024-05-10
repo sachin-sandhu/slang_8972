@@ -12,7 +12,7 @@ Source: >
 
 Errors: # 1 total
   - >
-    Error: Expected ConstantKeyword or Identifier or InternalKeyword or PrivateKeyword or PublicKeyword.
+    Error: Expected ConstantKeyword or Identifier or InternalKeyword or OverrideKeyword or PrivateKeyword or PublicKeyword.
        ╭─[crates/solidity/testing/snapshots/cst_output/ContractDefinition/constructor_contextual/input.sol:4:13]
        │
      4 │ ╭─▶     constructor() {}
@@ -24,21 +24,20 @@ Errors: # 1 total
 
 Tree:
   - (ContractDefinition): # "// Constructors introduced in 0.4.22 but `construc..." (0..191)
-      - (leading_trivia꞉ SingleLineComment): "// Constructors introduced in 0.4.22 but `construc..." # (0..91)
-      - (leading_trivia꞉ EndOfLine): "\n" # (91..92)
-      - (leading_trivia꞉ EndOfLine): "\n" # (92..93)
+      - (LeadingTrivia): # "// Constructors introduced in 0.4.22 but `construc..." (0..93)
+          - (SingleLineComment): "// Constructors introduced in 0.4.22 but `construc..." # (0..91)
+          - (EndOfLine): "\n" # (91..92)
+          - (EndOfLine): "\n" # (92..93)
       - (contract_keyword꞉ ContractKeyword): "contract" # (93..101)
-      - (leading_trivia꞉ Whitespace): " " # (101..102)
+      - (LeadingTrivia) ► (Whitespace): " " # (101..102)
       - (name꞉ Identifier): "Contract" # (102..110)
-      - (leading_trivia꞉ Whitespace): " " # (110..111)
+      - (LeadingTrivia) ► (Whitespace): " " # (110..111)
       - (open_brace꞉ OpenBrace): "{" # (111..112)
-      - (trailing_trivia꞉ EndOfLine): "\n" # (112..113)
+      - (TrailingTrivia) ► (EndOfLine): "\n" # (112..113)
       - (members꞉ ContractMembers): # "\tconstructor" (113..125)
-          - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition): # "\tconstructor" (113..125)
-              - (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "\tconstructor" (113..125)
-                  - (leading_trivia꞉ Whitespace): "\t" # (113..114)
-                  - (item꞉ Identifier): "constructor" # (114..125)
-              - (attributes꞉ StateVariableAttributes): [] # (125..125)
+          - (item꞉ ContractMember) ► (variant꞉ StateVariableDefinition) ► (type_name꞉ TypeName) ► (variant꞉ IdentifierPath): # "\tconstructor" (113..125)
+              - (LeadingTrivia) ► (Whitespace): "\t" # (113..114)
+              - (item꞉ Identifier): "constructor" # (114..125)
       - (SKIPPED): "() {}\n    function func() public {\n\t\tuint256 const..." # (125..189)
       - (close_brace꞉ CloseBrace): "}" # (189..190)
-      - (trailing_trivia꞉ EndOfLine): "\n" # (190..191)
+      - (TrailingTrivia) ► (EndOfLine): "\n" # (190..191)

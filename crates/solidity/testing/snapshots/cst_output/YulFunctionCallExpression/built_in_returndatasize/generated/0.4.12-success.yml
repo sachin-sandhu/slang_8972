@@ -9,6 +9,5 @@ Tree:
   - (YulFunctionCallExpression): # "returndatasize()\n" (0..17)
       - (operand꞉ YulExpression) ► (variant꞉ YulBuiltInFunction) ► (variant꞉ YulReturnDataSizeKeyword): "returndatasize" # (0..14)
       - (open_paren꞉ OpenParen): "(" # (14..15)
-      - (arguments꞉ YulArguments): [] # (15..15)
       - (close_paren꞉ CloseParen): ")" # (15..16)
-      - (trailing_trivia꞉ EndOfLine): "\n" # (16..17)
+      - (TrailingTrivia) ► (EndOfLine): "\n" # (16..17)

@@ -46,10 +46,10 @@ test("using the cursor", async () => {
     const cursor = parseOutput.createTreeCursor();
 
     while (cursor.goToNextRuleWithKind(RuleKind.ContractDefinition)) {
-      const childCursor = cursor.spawn();
-      assert(childCursor.goToNextTokenWithKind(TokenKind.Identifier));
+      const childCursopr = cursor.spawn();
+      assert(childCursopr.goToNextTokenWithKind(TokenKind.Identifier));
 
-      const tokenNode = childCursor.node();
+      const tokenNode = childCursopr.node();
       assert(tokenNode instanceof TokenNode);
       contracts.push(tokenNode.text);
     }

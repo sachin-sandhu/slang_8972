@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::kinds::TokenKind;
-use crate::text_index::{TextRange, TextRangeExtensions};
+use crate::text_index::{TextIndex, TextRange};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParseError {
@@ -32,7 +32,18 @@ impl ParseError {
 }
 
 impl ParseError {
-    pub(crate) fn new(
+    #[allow(dead_code)]
+    pub(crate) fn new_at_position(
+        position: TextIndex,
+        tokens_that_would_have_allowed_more_progress: Vec<TokenKind>,
+    ) -> Self {
+        Self {
+            text_range: position..position,
+            tokens_that_would_have_allowed_more_progress,
+        }
+    }
+
+    pub(crate) fn new_covering_range(
         text_range: TextRange,
         tokens_that_would_have_allowed_more_progress: Vec<TokenKind>,
     ) -> Self {
@@ -53,6 +64,8 @@ pub(crate) fn render_error_report(
 
     let kind = ReportKind::Error;
     let color = if with_color { Color::Red } else { Color::Unset };
+    let source_start = error.text_range.start.utf8;
+    let source_end = error.text_range.end.utf8;
 
     let tokens_that_would_have_allowed_more_progress =
         error.tokens_that_would_have_allowed_more_progress();
@@ -69,14 +82,12 @@ pub(crate) fn render_error_report(
         return format!("{kind}: {message}\n   ─[{source_id}:0:0]");
     }
 
-    let range = error.text_range.char();
-
-    let mut builder = Report::build(kind, source_id, range.start)
+    let mut builder = Report::build(kind, source_id, source_start)
         .with_config(Config::default().with_color(with_color))
         .with_message(message);
 
     builder.add_label(
-        Label::new((source_id, range))
+        Label::new((source_id, source_start..source_end))
             .with_color(color)
             .with_message("Error occurred here.".to_string()),
     );

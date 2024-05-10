@@ -3,26 +3,27 @@
 // The functions are meant to be definitions for export, so they're not really used
 #![allow(clippy::return_self_not_must_use)]
 
-use napi::Either;
+use cst::ToJS;
+use napi::bindgen_prelude::Env;
+use napi::JsObject;
 use napi_derive::napi;
 use text_index::{TextIndex, TextRange};
 
-use crate::napi_interface::cst::{self, RuleNode, TokenNode};
-use crate::napi_interface::{text_index, NodeLabel, RuleKind, RustCursor, TokenKind};
+use crate::napi_interface::{cst, text_index, FieldName, RuleKind, RustCursor, TokenKind};
 
 #[napi(namespace = "cursor")]
-pub struct Cursor(pub(super) RustCursor);
+pub struct Cursor(Box<RustCursor>);
 
 impl From<RustCursor> for Cursor {
     fn from(value: RustCursor) -> Self {
-        Self(value)
+        Self(value.into())
     }
 }
 
 #[napi(namespace = "cursor")]
 impl Cursor {
     pub(crate) fn new(cursor: RustCursor) -> Self {
-        Self(cursor)
+        Self(Box::new(cursor))
     }
 
     #[napi(catch_unwind)]
@@ -52,13 +53,13 @@ impl Cursor {
     }
 
     #[napi(ts_return_type = "cst.Node", catch_unwind)]
-    pub fn node(&self) -> Either<RuleNode, TokenNode> {
-        self.0.node().into()
+    pub fn node(&self, env: Env) -> JsObject {
+        self.0.node().to_js(&env)
     }
 
-    #[napi(getter, ts_return_type = "kinds.NodeLabel", catch_unwind)]
-    pub fn label(&self) -> Option<NodeLabel> {
-        self.0.label()
+    #[napi(getter, ts_return_type = "kinds.FieldName", catch_unwind)]
+    pub fn node_name(&self) -> Option<FieldName> {
+        self.0.node_name()
     }
 
     #[napi(getter, ts_return_type = "text_index.TextIndex", catch_unwind)]
@@ -78,8 +79,11 @@ impl Cursor {
     }
 
     #[napi(ts_return_type = "Array<cst.RuleNode>", catch_unwind)]
-    pub fn ancestors(&self) -> Vec<cst::RuleNode> {
-        self.0.ancestors().map(cst::RuleNode).collect()
+    pub fn ancestors(&self, env: Env) -> Vec<JsObject> {
+        self.0
+            .ancestors()
+            .map(|rust_rule_node| rust_rule_node.to_js(&env))
+            .collect()
     }
 
     #[napi(catch_unwind)]

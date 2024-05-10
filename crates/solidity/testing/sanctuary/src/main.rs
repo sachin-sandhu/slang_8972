@@ -1,133 +1,106 @@
-mod chains;
 mod datasets;
-mod events;
 mod reporting;
-mod tests;
+
+use std::collections::BTreeSet;
+use std::ops::ControlFlow;
+use std::path::Path;
+use std::process::ExitCode;
 
 use anyhow::Result;
-use clap::Parser;
 use infra_utils::paths::PathExtensions;
-use infra_utils::terminal::{NumbersDefaultDisplay, Terminal};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+use semver::Version;
+use slang_solidity::kinds::RuleKind;
+use slang_solidity::language::Language;
+use solidity_language::SolidityDefinition;
+use solidity_testing_utils::version_pragmas::extract_version_pragmas;
 
-use crate::chains::Chain;
-use crate::datasets::{DataSet, SourceFile};
-use crate::events::Events;
-use crate::tests::{run_test, select_tests, TestSelection};
+use crate::datasets::{get_all_datasets, Dataset};
+use crate::reporting::Reporter;
 
-#[derive(Debug, Parser)]
-struct Cli {
-    /// Chain and sub-network to run against.
-    #[command(subcommand)]
-    chain: Chain,
+fn main() -> Result<ExitCode> {
+    let versions = SolidityDefinition::create().collect_breaking_versions();
 
-    #[command(flatten)]
-    sharding_options: ShardingOptions,
+    for dataset in get_all_datasets()? {
+        match process_dataset(&dataset, &versions)? {
+            ControlFlow::Continue(..) => {}
+            ControlFlow::Break(exit_code) => return Ok(exit_code),
+        }
+    }
 
-    /// Disables parallelism, and logs traces to help with debugging errors or panics.
-    #[arg(long, default_value_t = false)]
-    trace: bool,
+    Ok(ExitCode::SUCCESS)
 }
 
-#[derive(Debug, Parser)]
-struct ShardingOptions {
-    /// If splitting files across multiple shards, this is the total number of shards.
-    #[arg(long, requires = "shard_index")]
-    shards_count: Option<usize>,
+fn process_dataset(
+    dataset: &impl Dataset,
+    versions: &BTreeSet<Version>,
+) -> Result<ControlFlow<ExitCode>> {
+    println!();
+    println!();
+    println!("  🧪 Dataset: {title}", title = dataset.get_title());
+    println!();
+    println!();
 
-    /// If splitting files across multiple shards, this is the index of this shard (0-based).
-    #[arg(long, requires = "shards_count")]
-    shard_index: Option<usize>,
-}
-
-fn main() -> Result<()> {
-    let Cli {
-        chain,
-        sharding_options,
-        trace,
-    } = Cli::parse();
-
-    Terminal::step(format!(
-        "initialize {chain}/{network}",
-        chain = chain.name(),
-        network = chain.network_name(),
-    ));
-
-    let dataset = DataSet::initialize(&chain)?;
-
-    let TestSelection {
-        directories,
-        files_count,
-    } = select_tests(&dataset, &sharding_options);
+    println!("Preparing dataset...");
+    let source_files = dataset.prepare()?;
 
     println!();
     println!(
-            "Testing the following {directories_count} directories, containing a total of {files_count} source files:",
-            directories_count = directories.len().num_display(),
-            files_count = files_count.num_display(),
+        "Processing {count} source files...",
+        count = source_files.len()
     );
-    println!();
-    println!("{directories:?}");
-    println!();
 
-    let mut events = Events::new(directories.len(), files_count);
+    let reporter = Reporter::new(source_files.len())?;
 
-    for directory in directories {
-        Terminal::step(format!("testing directory '{directory}'"));
+    source_files
+        .par_iter()
+        // Halt as soon as possible if a child panics.
+        .panic_fuse()
+        .map(|file_path| {
+            process_source_file(file_path, versions, &reporter)?;
+            reporter.report_file_completed();
+            Ok(())
+        })
+        .collect::<Result<()>>()?;
 
-        let files = dataset.checkout_directory(directory)?;
+    let total_errors = reporter.finish();
+    if total_errors > 0 {
+        println!("There were errors processing the dataset.");
+        Ok(ControlFlow::Break(ExitCode::FAILURE))
+    } else {
+        Ok(ControlFlow::Continue(()))
+    }
+}
 
-        events.start_directory(files.len());
+fn process_source_file(
+    file_path: &Path,
+    versions: &BTreeSet<Version>,
+    reporter: &Reporter,
+) -> Result<()> {
+    let source_id = file_path.unwrap_str();
+    let source = &file_path.read_to_string()?;
 
-        if trace {
-            run_with_traces(files, &events)?;
-        } else {
-            run_in_parallel(files, &events)?;
+    let latest_version = versions.iter().max().unwrap();
+    let Ok(pragmas) = extract_version_pragmas(source, latest_version) else {
+        // Skip this file if we failed to filter compatible versions.
+        return Ok(());
+    };
+
+    if pragmas.is_empty() {
+        // Skip if there are no pragmas in that file.
+        return Ok(());
+    }
+
+    for version in versions {
+        if !pragmas.iter().all(|pragma| pragma.matches(version)) {
+            continue;
         }
 
-        events.finish_directory();
-    }
+        let language = Language::new(version.to_owned())?;
+        let output = language.parse(RuleKind::SourceUnit, source);
 
-    let failure_count = events.failure_count();
-    if failure_count > 0 {
-        println!();
-        println!(
-            "Found {failure_count} failure(s). Please check the logs above for more information.",
-        );
-        println!();
-
-        // Exit cleanly without useless stack traces:
-        #[allow(clippy::exit)]
-        std::process::exit(1);
+        reporter.report_test_result(source_id, source, version, &output);
     }
 
     Ok(())
-}
-
-fn run_with_traces(files: &Vec<SourceFile>, events: &Events) -> Result<()> {
-    for file in files {
-        let compiler = &file.compiler;
-        let path = file.path.strip_repo_root()?;
-
-        events.trace(format!("[{compiler}] Starting: {path:?}"));
-
-        run_test(file, events)?;
-
-        events.trace(format!("[{compiler}] Finished: {path:?}"));
-    }
-
-    Ok(())
-}
-
-fn run_in_parallel(files: &Vec<SourceFile>, events: &Events) -> Result<()> {
-    files
-    .par_iter()
-    .panic_fuse(/* Halt as soon as possible if a child panics */)
-    .try_for_each(|file| run_test(file, events))
-}
-
-#[test]
-fn verify_clap_cli() {
-    // Catches problems earlier in the development cycle:
-    <Cli as clap::CommandFactory>::command().debug_assert();
 }
