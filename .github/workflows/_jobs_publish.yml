@@ -19,10 +19,10 @@ jobs:
       #
 
       - name: "Clone repository"
-        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11"
+        uses: "actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b"
 
       - name: "Restore CI cache"
-        uses: "actions/cache/restore@13aacd865c20de90d75de3b17ebe84f7a17d57d2"
+        uses: "actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9"
         with:
           key: "cache-${{ github.ref_name }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}"
           restore-keys: |
@@ -41,7 +41,7 @@ jobs:
       - run: "scripts/bin/infra setup npm"
 
       - id: "changesets"
-        uses: "changesets/action@f13b1baaa620fde937751f5d2c3572b9da32af23"
+        uses: "changesets/action@aba318e9165b45b7948c60273e0b72fce0a64eb9"
         with:
           title: "Bump Slang Version"
           commit: "Bump Slang Version"
@@ -66,10 +66,10 @@ jobs:
       #
 
       - name: "Clone repository"
-        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11"
+        uses: "actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b"
 
       - name: "Restore CI cache"
-        uses: "actions/cache/restore@13aacd865c20de90d75de3b17ebe84f7a17d57d2"
+        uses: "actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9"
         with:
           key: "cache-${{ github.ref_name }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}"
           restore-keys: |
