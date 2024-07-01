@@ -29,18 +29,18 @@
   ],
   "type": "commonjs",
   "devDependencies": {
-    "@napi-rs/cli": "2.18.0"
+    "@napi-rs/cli": "2.18.4"
   },
   "optionalDependencies": {
-    "@nomicfoundation/slang-darwin-arm64": "0.14.2",
-    "@nomicfoundation/slang-win32-arm64-msvc": "0.14.2",
-    "@nomicfoundation/slang-linux-arm64-gnu": "0.14.2",
-    "@nomicfoundation/slang-linux-arm64-musl": "0.14.2",
-    "@nomicfoundation/slang-win32-ia32-msvc": "0.14.2",
-    "@nomicfoundation/slang-darwin-x64": "0.14.2",
-    "@nomicfoundation/slang-win32-x64-msvc": "0.14.2",
-    "@nomicfoundation/slang-linux-x64-gnu": "0.14.2",
-    "@nomicfoundation/slang-linux-x64-musl": "0.14.2"
+    "@nomicfoundation/slang-darwin-arm64": "0.15.1",
+    "@nomicfoundation/slang-win32-arm64-msvc": "0.15.1",
+    "@nomicfoundation/slang-linux-arm64-gnu": "0.15.1",
+    "@nomicfoundation/slang-linux-arm64-musl": "0.15.1",
+    "@nomicfoundation/slang-win32-ia32-msvc": "0.15.1",
+    "@nomicfoundation/slang-darwin-x64": "0.15.1",
+    "@nomicfoundation/slang-win32-x64-msvc": "0.15.1",
+    "@nomicfoundation/slang-linux-x64-gnu": "0.15.1",
+    "@nomicfoundation/slang-linux-x64-musl": "0.15.1"
   },
   "napi": {
     "triples": {
